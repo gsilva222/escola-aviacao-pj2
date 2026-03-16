@@ -1,0 +1,17 @@
+# Ficheiros do VS Code / Eclipse / IntelliJ
+.vscode/
+.idea/
+*.iml
+.project
+.settings/
+.classpath
+
+# Compilações do Java e Maven
+target/
+*.class
+*.jar
+*.war
+
+# Logs e ficheiros do Windows
+*.log
+Thumbs.db
