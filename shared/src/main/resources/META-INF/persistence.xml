@@ -4,6 +4,14 @@
         <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
         
         <class>pt.ipvc.estg.entities.Perfil</class>
+        <class>pt.ipvc.estg.entities.Course</class>
+        <class>pt.ipvc.estg.entities.Student</class>
+        <class>pt.ipvc.estg.entities.Instructor</class>
+        <class>pt.ipvc.estg.entities.Aircraft</class>
+        <class>pt.ipvc.estg.entities.Flight</class>
+        <class>pt.ipvc.estg.entities.Evaluation</class>
+        <class>pt.ipvc.estg.entities.Payment</class>
+        <class>pt.ipvc.estg.entities.Maintenance</class>
         
         <properties>
             <!-- Configuração do servidor PostgreSQL -->

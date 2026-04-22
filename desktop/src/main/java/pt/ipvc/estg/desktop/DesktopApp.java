@@ -1,24 +1,42 @@
 package pt.ipvc.estg.desktop;
 
+import pt.ipvc.estg.desktop.views.panels.*;
 import javax.swing.*;
 
 /**
- * Classe principal da aplicação Desktop
+ * Aplicação principal do Desktop - Escola de Aviação
+ * Integra todos os módulos (Cursos, Estudantes, Instrutores, Aviões, Voos, Avaliações, Pagamentos, Manutenções)
  */
-public class DesktopApp {
+public class DesktopApp extends JFrame {
+    
+    public DesktopApp() {
+        initializeUI();
+    }
+    
+    private void initializeUI() {
+        setTitle("Escola de Aviação - Gestão");
+        setSize(1200, 800);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setResizable(true);
+        
+        // Criar abas para cada módulo
+        JTabbedPane tabbedPane = new JTabbedPane();
+        
+        tabbedPane.addTab("Cursos", new BOCourses());
+        tabbedPane.addTab("Estudantes", new BOStudents());
+        tabbedPane.addTab("Instrutores", new BOInstructors());
+        tabbedPane.addTab("Aviões", new BOAircraft());
+        tabbedPane.addTab("Voos", new BOFlights());
+        tabbedPane.addTab("Avaliações", new BOEvaluations());
+        tabbedPane.addTab("Pagamentos", new BOPayments());
+        tabbedPane.addTab("Manutenções", new BOMaintenance());
+        
+        add(tabbedPane);
+        setVisible(true);
+    }
     
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            JFrame frame = new JFrame("Gestão Escola de Aviação");
-            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            frame.setSize(1024, 768);
-            frame.setLocationRelativeTo(null);
-            
-            // TODO: Aqui será adicionada a interface gráfica
-            JLabel label = new JLabel("Bem-vindo à Gestão da Escola de Aviação!");
-            frame.add(label);
-            
-            frame.setVisible(true);
-        });
+        SwingUtilities.invokeLater(() -> new DesktopApp());
     }
 }
