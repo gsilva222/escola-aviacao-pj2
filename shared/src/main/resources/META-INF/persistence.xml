@@ -3,16 +3,20 @@
     <persistence-unit name="escolaAviacaoPU" transaction-type="RESOURCE_LOCAL">
         <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
         
+        <class>pt.ipvc.estg.entities.Perfil</class>
+        
         <properties>
-            <!-- A TUA LIGAÇÃO AO SERVIDOR DOCKER -->
+            <!-- Configuração do servidor PostgreSQL -->
             <property name="jakarta.persistence.jdbc.url" value="jdbc:postgresql://doberserver222.cc:2345/escola_aviacao"/>
             <property name="jakarta.persistence.jdbc.user" value="admin_escola"/>
             <property name="jakarta.persistence.jdbc.password" value="admin_password123"/>
             <property name="jakarta.persistence.jdbc.driver" value="org.postgresql.Driver"/>
 
             <!-- Configurações do Hibernate -->
-            <property name="hibernate.hbm2ddl.auto" value="validate"/> <!-- Apenas valida se as tabelas existem -->
-            <property name="hibernate.show_sql" value="true"/> <!-- Mostra as queries no terminal -->
+            <property name="hibernate.hbm2ddl.auto" value="validate"/>
+            <property name="hibernate.show_sql" value="true"/>
+            <property name="hibernate.format_sql" value="true"/>
+            <property name="hibernate.dialect" value="org.hibernate.dialect.PostgreSQLDialect"/>
         </properties>
     </persistence-unit>
 </persistence>
