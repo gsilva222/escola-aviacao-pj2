@@ -1,6 +1,7 @@
 package pt.ipvc.estg.desktop;
 
 import pt.ipvc.estg.desktop.views.LoginFrame;
+import pt.ipvc.estg.dal.mock.MockDataSeeder;
 
 import javax.swing.*;
 
@@ -10,6 +11,9 @@ import javax.swing.*;
  */
 public class Main {
     public static void main(String[] args) {
+        // Seed de dados mock na inicialização
+        MockDataSeeder.seedAllData();
+        
         SwingUtilities.invokeLater(LoginFrame::new);
     }
 }

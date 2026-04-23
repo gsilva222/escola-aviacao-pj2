@@ -16,20 +16,8 @@ public class StudentDAOMock {
     private static final AtomicInteger idSequence = new AtomicInteger(1);
     
     static {
-        // Dados iniciais (requer Course Mock para funcionar)
-        CourseDAOMock courseMock = new CourseDAOMock();
-        List<Course> courses = courseMock.findAll();
-        
-        if (!courses.isEmpty()) {
-            inserirEstudanteInicial("João Silva", "joao.silva@email.com", "+351 912 345 678", 
-                                  "123456789", courses.get(0));
-            inserirEstudanteInicial("Ana Rodrigues", "ana.rodrigues@email.com", "+351 963 456 789", 
-                                  "234567890", courses.get(1));
-            inserirEstudanteInicial("Marta Costa", "marta.costa@email.com", "+351 911 678 901", 
-                                  "456789012", courses.get(0));
-            inserirEstudanteInicial("Ricardo Almeida", "ricardo.almeida@email.com", "+351 962 789 012", 
-                                  "567890123", courses.get(3));
-        }
+        // Dados iniciais removidos - usar MockDataSeeder.seedStudents() na aplicação
+        // para popular com dados realistas
     }
     
     private static void inserirEstudanteInicial(String name, String email, String phone, 

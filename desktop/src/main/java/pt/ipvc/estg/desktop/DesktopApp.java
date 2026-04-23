@@ -61,7 +61,7 @@ public class DesktopApp extends JFrame {
         contentPanel.add(new BOMaintenance(), "maintenance");
         contentPanel.add(new BOEvaluations(), "evaluations");
         contentPanel.add(new BOPayments(), "payments");
-        contentPanel.add(createPlaceholder("Relatórios"), "reports");
+        contentPanel.add(new BOReports(), "reports");
 
         rightPanel.add(contentPanel, BorderLayout.CENTER);
 
