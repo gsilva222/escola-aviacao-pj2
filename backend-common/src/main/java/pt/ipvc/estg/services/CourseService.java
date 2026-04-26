@@ -1,6 +1,7 @@
 package pt.ipvc.estg.services;
 
 import pt.ipvc.estg.dal.mock.CourseDAOMock;
+import pt.ipvc.estg.dal.mock.MockDataSeeder;
 import pt.ipvc.estg.entities.Course;
 import java.util.List;
 import java.util.Optional;
@@ -13,6 +14,7 @@ public class CourseService {
     private final CourseDAOMock courseDAO;
     
     public CourseService() {
+        MockDataSeeder.seedAllData();
         this.courseDAO = new CourseDAOMock();
     }
     

@@ -1,6 +1,7 @@
 package pt.ipvc.estg.services;
 
 import pt.ipvc.estg.dal.mock.PaymentDAOMock;
+import pt.ipvc.estg.dal.mock.MockDataSeeder;
 import pt.ipvc.estg.entities.Payment;
 import pt.ipvc.estg.entities.Student;
 import java.time.LocalDate;
@@ -15,6 +16,7 @@ public class PaymentService {
     private final PaymentDAOMock paymentDAO;
     
     public PaymentService() {
+        MockDataSeeder.seedAllData();
         this.paymentDAO = new PaymentDAOMock();
     }
     

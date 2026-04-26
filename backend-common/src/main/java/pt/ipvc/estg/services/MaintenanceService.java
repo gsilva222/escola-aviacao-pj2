@@ -1,6 +1,7 @@
 package pt.ipvc.estg.services;
 
 import pt.ipvc.estg.dal.mock.MaintenanceDAOMock;
+import pt.ipvc.estg.dal.mock.MockDataSeeder;
 import pt.ipvc.estg.entities.Maintenance;
 import pt.ipvc.estg.entities.Aircraft;
 import java.time.LocalDate;
@@ -15,6 +16,7 @@ public class MaintenanceService {
     private final MaintenanceDAOMock maintenanceDAO;
     
     public MaintenanceService() {
+        MockDataSeeder.seedAllData();
         this.maintenanceDAO = new MaintenanceDAOMock();
     }
     

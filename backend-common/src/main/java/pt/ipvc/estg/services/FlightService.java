@@ -1,6 +1,7 @@
 package pt.ipvc.estg.services;
 
 import pt.ipvc.estg.dal.mock.FlightDAOMock;
+import pt.ipvc.estg.dal.mock.MockDataSeeder;
 import pt.ipvc.estg.entities.Flight;
 import pt.ipvc.estg.entities.Student;
 import pt.ipvc.estg.entities.Instructor;
@@ -17,6 +18,7 @@ public class FlightService {
     private final FlightDAOMock flightDAO;
     
     public FlightService() {
+        MockDataSeeder.seedAllData();
         this.flightDAO = new FlightDAOMock();
     }
     

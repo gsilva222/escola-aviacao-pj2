@@ -1,6 +1,7 @@
 package pt.ipvc.estg.services;
 
 import pt.ipvc.estg.dal.mock.InstructorDAOMock;
+import pt.ipvc.estg.dal.mock.MockDataSeeder;
 import pt.ipvc.estg.entities.Instructor;
 import java.util.List;
 import java.util.Optional;
@@ -13,6 +14,7 @@ public class InstructorService {
     private final InstructorDAOMock instructorDAO;
     
     public InstructorService() {
+        MockDataSeeder.seedAllData();
         this.instructorDAO = new InstructorDAOMock();
     }
     

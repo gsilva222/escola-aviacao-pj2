@@ -1,5 +1,6 @@
 package pt.ipvc.estg.desktop;
 
+import pt.ipvc.estg.dal.mock.MockDataSeeder;
 import pt.ipvc.estg.desktop.views.components.Sidebar;
 import pt.ipvc.estg.desktop.views.components.TopBar;
 import pt.ipvc.estg.desktop.views.components.UITheme;
@@ -22,6 +23,7 @@ public class DesktopApp extends JFrame {
 
     public DesktopApp(String role) {
         this.userRole = role;
+        MockDataSeeder.seedAllData();
         initializeUI();
     }
 

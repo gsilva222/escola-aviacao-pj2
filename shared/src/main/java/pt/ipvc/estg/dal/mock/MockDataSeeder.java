@@ -326,17 +326,38 @@ public class MockDataSeeder {
      * Método principal para fazer seed de TODOS os dados
      */
     public static synchronized void seedAllData() {
-        if (seeded || new StudentDAOMock().count() > 0) {
+        StudentDAOMock studentDAO = new StudentDAOMock();
+        FlightDAOMock flightDAO = new FlightDAOMock();
+        EvaluationDAOMock evaluationDAO = new EvaluationDAOMock();
+        PaymentDAOMock paymentDAO = new PaymentDAOMock();
+        MaintenanceDAOMock maintenanceDAO = new MaintenanceDAOMock();
+
+        if (seeded
+                && studentDAO.count() > 0
+                && flightDAO.count() > 0
+                && evaluationDAO.count() > 0
+                && paymentDAO.count() > 0
+                && maintenanceDAO.count() > 0) {
             seeded = true;
             return;
         }
 
         System.out.println("\n🌱 [SEEDER] Iniciando seeding de dados mock...");
-        seedStudents();
-        seedFlights();
-        seedEvaluations();
-        seedPayments();
-        seedMaintenance();
+        if (studentDAO.count() == 0) {
+            seedStudents();
+        }
+        if (flightDAO.count() == 0) {
+            seedFlights();
+        }
+        if (evaluationDAO.count() == 0) {
+            seedEvaluations();
+        }
+        if (paymentDAO.count() == 0) {
+            seedPayments();
+        }
+        if (maintenanceDAO.count() == 0) {
+            seedMaintenance();
+        }
         seeded = true;
         System.out.println("✨ [SEEDER] Seeding completo!\n");
     }

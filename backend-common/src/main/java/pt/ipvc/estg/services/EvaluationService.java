@@ -1,6 +1,7 @@
 package pt.ipvc.estg.services;
 
 import pt.ipvc.estg.dal.mock.EvaluationDAOMock;
+import pt.ipvc.estg.dal.mock.MockDataSeeder;
 import pt.ipvc.estg.entities.Evaluation;
 import pt.ipvc.estg.entities.Student;
 import pt.ipvc.estg.entities.Course;
@@ -16,6 +17,7 @@ public class EvaluationService {
     private final EvaluationDAOMock evaluationDAO;
     
     public EvaluationService() {
+        MockDataSeeder.seedAllData();
         this.evaluationDAO = new EvaluationDAOMock();
     }
     

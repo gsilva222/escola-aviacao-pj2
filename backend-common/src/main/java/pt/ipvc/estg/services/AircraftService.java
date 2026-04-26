@@ -1,6 +1,7 @@
 package pt.ipvc.estg.services;
 
 import pt.ipvc.estg.dal.mock.AircraftDAOMock;
+import pt.ipvc.estg.dal.mock.MockDataSeeder;
 import pt.ipvc.estg.entities.Aircraft;
 import java.time.LocalDate;
 import java.util.List;
@@ -14,6 +15,7 @@ public class AircraftService {
     private final AircraftDAOMock aircraftDAO;
     
     public AircraftService() {
+        MockDataSeeder.seedAllData();
         this.aircraftDAO = new AircraftDAOMock();
     }
     

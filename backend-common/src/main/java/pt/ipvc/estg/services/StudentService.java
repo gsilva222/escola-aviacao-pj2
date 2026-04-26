@@ -1,6 +1,7 @@
 package pt.ipvc.estg.services;
 
 import pt.ipvc.estg.dal.mock.StudentDAOMock;
+import pt.ipvc.estg.dal.mock.MockDataSeeder;
 import pt.ipvc.estg.entities.Student;
 import pt.ipvc.estg.entities.Course;
 import java.time.LocalDate;
@@ -15,6 +16,7 @@ public class StudentService {
     private final StudentDAOMock studentDAO;
     
     public StudentService() {
+        MockDataSeeder.seedAllData();
         this.studentDAO = new StudentDAOMock();
     }
     

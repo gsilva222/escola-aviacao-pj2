@@ -1,7 +1,6 @@
 package pt.ipvc.estg.desktop.views;
 
 import pt.ipvc.estg.desktop.DesktopApp;
-import pt.ipvc.estg.desktop.views.components.UITheme;
 import pt.ipvc.estg.dal.mock.MockDataSeeder;
 
 import javax.swing.*;
@@ -49,7 +48,7 @@ public class LoginFrame extends JFrame {
         mainPanel.add(rightPanel, BorderLayout.CENTER);
 
         add(mainPanel);
-        UITheme.polishTree(mainPanel);
+        fillDemoCredentials();
     }
 
     private JPanel createLeftPanel() {
@@ -175,6 +174,8 @@ public class LoginFrame extends JFrame {
         formPanel.setBackground(WHITE);
         formPanel.setLayout(new BoxLayout(formPanel, BoxLayout.Y_AXIS));
         formPanel.setBorder(new EmptyBorder(40, 40, 40, 40));
+        formPanel.setPreferredSize(new Dimension(420, 548));
+        formPanel.setMinimumSize(new Dimension(420, 548));
         formPanel.setMaximumSize(new Dimension(420, 600));
 
         // Set rounded borders
@@ -204,7 +205,7 @@ public class LoginFrame extends JFrame {
 
         // Email field
         formPanel.add(createLabel("Email"));
-        emailField = new JTextField("admin@aeroschool.pt");
+        emailField = new JTextField();
         emailField.setFont(new Font("Inter", Font.PLAIN, 13));
         formPanel.add(createStyledTextField(emailField));
 
@@ -212,7 +213,7 @@ public class LoginFrame extends JFrame {
 
         // Password field
         formPanel.add(createLabel("Senha"));
-        passwordField = new JPasswordField("••••••••");
+        passwordField = new JPasswordField();
         passwordField.setFont(new Font("Inter", Font.PLAIN, 13));
         formPanel.add(createStyledTextField(passwordField));
 
@@ -223,6 +224,8 @@ public class LoginFrame extends JFrame {
         loginButton.setFont(new Font("Inter", Font.BOLD, 14));
         loginButton.setBackground(BLUE_PRIMARY);
         loginButton.setForeground(WHITE);
+        loginButton.setOpaque(true);
+        loginButton.setContentAreaFilled(true);
         loginButton.setBorderPainted(false);
         loginButton.setFocusPainted(false);
         loginButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
@@ -230,6 +233,14 @@ public class LoginFrame extends JFrame {
         loginButton.setMaximumSize(new Dimension(Integer.MAX_VALUE, 45));
         loginButton.addActionListener(this::handleLogin);
         formPanel.add(loginButton);
+
+        formPanel.add(Box.createVerticalStrut(18));
+
+        JLabel demoLabel = new JLabel("Demo: Administrador - admin@aeroschool.pt - qualquer senha");
+        demoLabel.setForeground(new Color(180, 83, 9));
+        demoLabel.setFont(new Font("Inter", Font.PLAIN, 11));
+        demoLabel.setAlignmentX(LEFT_ALIGNMENT);
+        formPanel.add(demoLabel);
 
         panel.add(formPanel, new GridBagConstraints());
 
@@ -248,6 +259,8 @@ public class LoginFrame extends JFrame {
     private JPanel createStyledTextField(JTextField field) {
         field.setBackground(INPUT_BG);
         field.setForeground(DARK_BG);
+        field.setCaretColor(BLUE_PRIMARY);
+        field.setOpaque(true);
         field.setBorder(BorderFactory.createLineBorder(BORDER_COLOR, 2));
         field.setFont(new Font("Inter", Font.PLAIN, 13));
         field.setPreferredSize(new Dimension(400, 40));
@@ -265,6 +278,7 @@ public class LoginFrame extends JFrame {
     private JPanel createStyledComboBox(JComboBox<String> combo) {
         combo.setBackground(INPUT_BG);
         combo.setForeground(DARK_BG);
+        combo.setOpaque(true);
         combo.setBorder(BorderFactory.createLineBorder(BORDER_COLOR, 2));
         combo.setFont(new Font("Inter", Font.PLAIN, 13));
         combo.setPreferredSize(new Dimension(400, 40));
@@ -298,6 +312,23 @@ public class LoginFrame extends JFrame {
 
         desktopApp = new DesktopApp(selectedRole);
         desktopApp.setVisible(true);
+    }
+
+    private void fillDemoCredentials() {
+        if (roleCombo != null) {
+            roleCombo.setSelectedItem("Administrador");
+        }
+        if (emailField != null) {
+            emailField.setText("admin@aeroschool.pt");
+        }
+        if (passwordField != null) {
+            passwordField.setText("admin");
+        }
+        if (loginButton != null) {
+            loginButton.setEnabled(true);
+            loginButton.setForeground(WHITE);
+            loginButton.setBackground(BLUE_PRIMARY);
+        }
     }
 
     // Custom border with rounded corners
