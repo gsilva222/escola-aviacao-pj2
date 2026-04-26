@@ -214,12 +214,11 @@ public class MockDataSeeder {
                 Evaluation evaluation = new Evaluation();
                 evaluation.setStudent(student);
                 evaluation.setCourse(student.getCourse());
-                evaluation.setInstructor(instructors.get(random.nextInt(instructors.size())));
                 evaluation.setEvaluationDate(evalDate);
-                evaluation.setGrade(grade);
+                evaluation.setScore((int) grade);
                 evaluation.setEvaluationType(type);
                 evaluation.setStatus(status);
-                evaluation.setComments("Avaliação de " + type);
+                evaluation.setNotes("Avaliação de " + type);
                 
                 evaluationDAO.insert(evaluation);
                 evalCount++;
@@ -261,9 +260,8 @@ public class MockDataSeeder {
                 Payment payment = new Payment();
                 payment.setStudent(student);
                 payment.setAmount(amount);
-                payment.setPaymentDate(paymentDate);
+                payment.setPaidDate(paymentDate);
                 payment.setPaymentMethod(method);
-                payment.setPaymentPurpose(purpose);
                 payment.setStatus(status);
                 payment.setDescription(purpose + " - " + student.getName());
                 
@@ -308,12 +306,11 @@ public class MockDataSeeder {
                 
                 Maintenance maintenance = new Maintenance();
                 maintenance.setAircraft(aircraft);
-                maintenance.setMaintenanceDate(mainDate);
+                maintenance.setStartDate(mainDate);
                 maintenance.setMaintenanceType(type);
                 maintenance.setDescription(type + " para " + aircraft.getRegistration());
-                maintenance.setCompletionDate(mainDate.plusDays(random.nextInt(30)));
+                maintenance.setActualEndDate(mainDate.plusDays(random.nextInt(30)));
                 maintenance.setStatus(status);
-                maintenance.setLaborHours(hours);
                 maintenance.setCost(cost);
                 
                 maintenanceDAO.insert(maintenance);

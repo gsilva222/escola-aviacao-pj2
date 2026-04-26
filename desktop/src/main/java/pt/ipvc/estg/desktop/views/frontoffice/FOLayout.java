@@ -32,7 +32,8 @@ public class FOLayout extends JFrame {
 
         // TopBar
         String displayName = currentStudent.getName() != null ? currentStudent.getName() : "Aluno";
-        TopBar topBar = new TopBar("Portal do Aluno - " + displayName);
+        TopBar topBar = new TopBar();
+        topBar.setPageTitle("Portal do Aluno - " + displayName);
         mainPanel.add(topBar, BorderLayout.NORTH);
 
         // Sidebar + Content

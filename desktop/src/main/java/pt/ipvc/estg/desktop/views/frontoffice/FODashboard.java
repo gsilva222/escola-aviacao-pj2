@@ -3,13 +3,11 @@ package pt.ipvc.estg.desktop.views.frontoffice;
 import pt.ipvc.estg.entities.Student;
 import pt.ipvc.estg.entities.Flight;
 import pt.ipvc.estg.entities.Evaluation;
-import pt.ipvc.estg.desktop.controllers.StudentController;
 import pt.ipvc.estg.desktop.controllers.FlightController;
 import pt.ipvc.estg.desktop.controllers.EvaluationController;
 
 import javax.swing.*;
 import java.awt.*;
-import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -19,13 +17,11 @@ import java.util.List;
 public class FODashboard extends JPanel {
 
     private final Student student;
-    private final StudentController studentController;
     private final FlightController flightController;
     private final EvaluationController evaluationController;
 
     public FODashboard(Student student) {
         this.student = student;
-        this.studentController = new StudentController();
         this.flightController = new FlightController();
         this.evaluationController = new EvaluationController();
         initializeUI();
@@ -72,6 +68,9 @@ public class FODashboard extends JPanel {
         JPanel panel = new JPanel(new GridLayout(2, 2, 15, 15));
         panel.setOpaque(false);
 
+        // Obter informações do curso
+        String courseInfo = student.getCourse() != null ? student.getCourse().getName() : "Curso não definido";
+
         // Card 1: Horas Totais
         double totalHours = calculateTotalFlightHours();
         JPanel card1 = createStatCard("Horas Totais", String.format("%.1f h", totalHours), "de 200h necessárias");
@@ -87,7 +86,7 @@ public class FODashboard extends JPanel {
         panel.add(card2);
 
         // Card 3: Avaliações
-        List<Evaluation> myEvaluations = evaluationController.obterAvaliaçõesPorEstudante(student.getId());
+        List<Evaluation> myEvaluations = evaluationController.obterAvaliacoesPorEstudante(student.getId());
         int passedEvaluations = myEvaluations == null ? 0 : (int) myEvaluations.stream()
                 .filter(e -> "passed".equals(e.getStatus()))
                 .count();
@@ -193,36 +192,5 @@ public class FODashboard extends JPanel {
         card.add(subtitleLabel);
 
         return card;
-    }
-}
-        titleLabel.setForeground(new Color(100, 100, 100));
-        card.add(titleLabel);
-
-        JLabel valueLabel = new JLabel(value);
-        valueLabel.setFont(new Font("Arial", Font.BOLD, 24));
-        valueLabel.setForeground(new Color(21, 101, 192));
-        card.add(valueLabel);
-
-        JLabel subtitleLabel = new JLabel(subtitle);
-        subtitleLabel.setFont(new Font("Arial", Font.PLAIN, 11));
-        subtitleLabel.setForeground(new Color(150, 150, 150));
-        card.add(subtitleLabel);
-
-        return card;
-    }
-
-    private JPanel createBottomPanel() {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
-        panel.setOpaque(false);
-
-        JButton btnScheduleFlight = new JButton("Agendar Novo Voo");
-        btnScheduleFlight.addActionListener(e -> JOptionPane.showMessageDialog(this, "Funcionalidade em desenvolvimento"));
-        panel.add(btnScheduleFlight);
-
-        JButton btnViewMore = new JButton("Ver Mais");
-        btnViewMore.addActionListener(e -> JOptionPane.showMessageDialog(this, "Funcionalidade em desenvolvimento"));
-        panel.add(btnViewMore);
-
-        return panel;
     }
 }

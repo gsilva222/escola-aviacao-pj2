@@ -297,7 +297,12 @@ public class LoginFrame extends JFrame {
         private int radius;
 
         RoundedBorder(int radius, EmptyBorder border) {
-            super(border.top, border.left, border.bottom, border.right);
+            super(
+                    border.getBorderInsets().top,
+                    border.getBorderInsets().left,
+                    border.getBorderInsets().bottom,
+                    border.getBorderInsets().right
+            );
             this.radius = radius;
         }
 

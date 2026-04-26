@@ -354,7 +354,9 @@ public class BOStudentFile extends JDialog {
         // Load flights
         List<Flight> flights = flightController.listarVoos();
         for (Flight flight : flights) {
-            if (flight.getStudentId() != null && flight.getStudentId().equals(student.getId())) {
+            if (flight.getStudent() != null &&
+                    flight.getStudent().getId() != null &&
+                    flight.getStudent().getId().equals(student.getId())) {
                 Object[] row = {
                     flight.getId(),
                     flight.getFlightDate(),
@@ -384,15 +386,17 @@ public class BOStudentFile extends JDialog {
         table.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
 
         // Load evaluations
-        List<Evaluation> evaluations = evaluationController.listarAvaliações();
+        List<Evaluation> evaluations = evaluationController.listarAvaliacoes();
         for (Evaluation eval : evaluations) {
-            if (eval.getStudentId() != null && eval.getStudentId().equals(student.getId())) {
+            if (eval.getStudent() != null &&
+                    eval.getStudent().getId() != null &&
+                    eval.getStudent().getId().equals(student.getId())) {
                 Object[] row = {
                     eval.getId(),
                     eval.getEvaluationDate(),
                     eval.getEvaluationType(),
                     eval.getScore(),
-                    eval.getFeedback() != null ? eval.getFeedback() : ""
+                    eval.getNotes() != null ? eval.getNotes() : ""
                 };
                 tableModel.addRow(row);
             }

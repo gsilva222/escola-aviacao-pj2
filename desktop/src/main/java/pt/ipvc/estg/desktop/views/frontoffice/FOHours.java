@@ -127,7 +127,3 @@ public class FOHours extends JPanel {
         return card;
     }
 }
-
-        return card;
-    }
-}

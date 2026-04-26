@@ -234,30 +234,6 @@ public class BOStudents extends JPanel {
             displayPage();
         }
     }
-        
-        panel.add(new JLabel("Nome:"));
-        textName = new JTextField();
-        panel.add(textName);
-        
-        panel.add(new JLabel("Email:"));
-        textEmail = new JTextField();
-        panel.add(textEmail);
-        
-        panel.add(new JLabel("Telemóvel:"));
-        textPhone = new JTextField();
-        panel.add(textPhone);
-        
-        panel.add(new JLabel("Estado:"));
-        String[] status = {"active", "suspended", "completed"};
-        comboStatus = new JComboBox(status);
-        panel.add(comboStatus);
-        
-        JButton btnCriar = new JButton("Criar Estudante");
-        btnCriar.addActionListener(e -> criarEstudante());
-        panel.add(btnCriar);
-        
-        return panel;
-    }
     
     private JPanel createTablePanel() {
         JPanel panel = new JPanel(new BorderLayout());

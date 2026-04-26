@@ -1,10 +1,9 @@
 package pt.ipvc.estg.desktop.views.frontoffice;
 
 import pt.ipvc.estg.entities.Student;
-import pt.ipvc.estg.desktop.controllers.StudentController;
 
 import javax.swing.*;
-import java.time.LocalDate;
+import java.awt.*;
 import java.time.format.DateTimeFormatter;
 
 /**
@@ -14,11 +13,9 @@ import java.time.format.DateTimeFormatter;
 public class FOProfile extends JPanel {
 
     private final Student student;
-    private final StudentController studentController;
 
     public FOProfile(Student student) {
         this.student = student;
-        this.studentController = new StudentController();
         initializeUI();
     }
 

@@ -32,17 +32,17 @@ public class FOEvaluations extends JPanel {
         String[] columns = {"Data", "Tipo", "Disciplina", "Nota", "Status", "Feedback"};
         DefaultTableModel tableModel = new DefaultTableModel(columns, 0);
         
-        List<Evaluation> myEvaluations = evaluationController.obterAvaliaçõesPorEstudante(student.getId());
+        List<Evaluation> myEvaluations = evaluationController.obterAvaliacoesPorEstudante(student.getId());
         
         if (myEvaluations != null) {
             for (Evaluation eval : myEvaluations) {
                 tableModel.addRow(new Object[]{
                         eval.getEvaluationDate(),
-                        eval.getType() != null ? eval.getType() : "Prático",
-                        eval.getSubject() != null ? eval.getSubject() : "---",
-                        eval.getGrade() != null ? eval.getGrade() : "---",
+                        eval.getEvaluationType() != null ? eval.getEvaluationType() : "Prático",
+                        eval.getExamName() != null ? eval.getExamName() : "---",
+                        eval.getScore() != null ? eval.getScore() : "---",
                         eval.getStatus() != null ? eval.getStatus() : "Pendente",
-                        eval.getFeedback() != null ? eval.getFeedback() : "Sem feedback"
+                        eval.getNotes() != null ? eval.getNotes() : "Sem feedback"
                 });
             }
         }
@@ -62,14 +62,8 @@ public class FOEvaluations extends JPanel {
         // Estatísticas
         double avgGrade = myEvaluations == null || myEvaluations.isEmpty() ? 0 : 
                 myEvaluations.stream()
-                        .filter(e -> e.getGrade() != null)
-                        .mapToDouble(e -> {
-                            try {
-                                return Double.parseDouble(e.getGrade().toString());
-                            } catch (Exception ex) {
-                                return 0;
-                            }
-                        })
+                        .filter(e -> e.getScore() != null)
+                        .mapToDouble(Evaluation::getScore)
                         .average()
                         .orElse(0);
         
