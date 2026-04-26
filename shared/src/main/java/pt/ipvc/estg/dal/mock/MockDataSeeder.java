@@ -12,6 +12,7 @@ import java.util.Random;
 public class MockDataSeeder {
     
     private static final Random random = new Random(42); // Seed fixo para dados consistentes
+    private static boolean seeded = false;
     
     private static final String[] firstNames = {
         "João", "Maria", "Pedro", "Ana", "Carlos", "Francisca", "Tiago", "Joana",
@@ -324,13 +325,19 @@ public class MockDataSeeder {
     /**
      * Método principal para fazer seed de TODOS os dados
      */
-    public static void seedAllData() {
+    public static synchronized void seedAllData() {
+        if (seeded || new StudentDAOMock().count() > 0) {
+            seeded = true;
+            return;
+        }
+
         System.out.println("\n🌱 [SEEDER] Iniciando seeding de dados mock...");
         seedStudents();
         seedFlights();
         seedEvaluations();
         seedPayments();
         seedMaintenance();
+        seeded = true;
         System.out.println("✨ [SEEDER] Seeding completo!\n");
     }
 }

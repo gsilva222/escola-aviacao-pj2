@@ -32,44 +32,55 @@ public class BODashboard extends JPanel {
     public BODashboard() {
         setBackground(LIGHT_BG);
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-        setBorder(new EmptyBorder(30, 30, 30, 30));
+        setBorder(new EmptyBorder(22, 20, 20, 20));
 
         add(createWelcomeBanner());
-        add(Box.createVerticalStrut(20));
+        add(Box.createVerticalStrut(16));
         add(createKPICards());
-        add(Box.createVerticalStrut(20));
+        add(Box.createVerticalStrut(16));
 
-        JPanel chartsPanel = new JPanel(new GridLayout(1, 2, 20, 0));
+        JPanel chartsPanel = new JPanel(new GridLayout(1, 2, 14, 0));
         chartsPanel.setOpaque(false);
-        chartsPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 320));
+        chartsPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 282));
         chartsPanel.add(createEnrollmentChart());
         chartsPanel.add(createAircraftStatusPanel());
         add(chartsPanel);
 
-        add(Box.createVerticalStrut(20));
+        add(Box.createVerticalStrut(14));
         add(createRecentActivityPanel());
         add(Box.createVerticalGlue());
     }
 
     private JPanel createWelcomeBanner() {
-        JPanel banner = new JPanel(new BorderLayout(20, 10));
-        banner.setBackground(DARK_BG);
-        banner.setBorder(new EmptyBorder(20, 24, 20, 24));
-        banner.setMaximumSize(new Dimension(Integer.MAX_VALUE, 120));
+        JPanel banner = new JPanel(new BorderLayout(20, 10)) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                GradientPaint gradient = new GradientPaint(0, 0, DARK_BG, getWidth(), getHeight(), BLUE_PRIMARY);
+                g2d.setPaint(gradient);
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 16, 16);
+                g2d.dispose();
+                super.paintComponent(g);
+            }
+        };
+        banner.setOpaque(false);
+        banner.setBorder(new EmptyBorder(18, 22, 18, 22));
+        banner.setMaximumSize(new Dimension(Integer.MAX_VALUE, 96));
 
         JPanel leftSection = new JPanel();
         leftSection.setOpaque(false);
         leftSection.setLayout(new BoxLayout(leftSection, BoxLayout.Y_AXIS));
 
         JLabel greeting = new JLabel("Bom dia, Administrador");
-        greeting.setFont(new Font("Inter", Font.BOLD, 18));
+        greeting.setFont(new Font("Inter", Font.BOLD, 17));
         greeting.setForeground(WHITE);
         leftSection.add(greeting);
 
         String dateStr = LocalDateTime.now()
                 .format(DateTimeFormatter.ofPattern("EEEE, dd 'de' MMMM 'de' yyyy", new Locale("pt", "PT")));
-        JLabel dateLabel = new JLabel("Hoje e " + dateStr + " · 12 voos agendados");
-        dateLabel.setFont(new Font("Inter", Font.PLAIN, 12));
+        JLabel dateLabel = new JLabel("Hoje e " + dateStr + " - 12 voos agendados para hoje");
+        dateLabel.setFont(new Font("Inter", Font.BOLD, 11));
         dateLabel.setForeground(new Color(191, 219, 254));
         leftSection.add(dateLabel);
 
@@ -110,7 +121,7 @@ public class BODashboard extends JPanel {
     private JPanel createKPICards() {
         JPanel panel = new JPanel(new GridLayout(1, 5, 15, 0));
         panel.setOpaque(false);
-        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 140));
+        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 112));
 
         panel.add(createKPICard("Alunos Ativos", "40", "de 48 matriculados", BLUE_PRIMARY));
         panel.add(createKPICard("Voos Hoje", "12", "3 completados, 9 agendados", new Color(124, 58, 237)));
@@ -127,16 +138,16 @@ public class BODashboard extends JPanel {
         card.setBackground(WHITE);
         card.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(BORDER_COLOR, 1),
-                new EmptyBorder(14, 14, 14, 14)
+                new EmptyBorder(16, 16, 16, 16)
         ));
 
         JLabel titleLabel = new JLabel(title);
-        titleLabel.setFont(new Font("Inter", Font.PLAIN, 12));
+        titleLabel.setFont(new Font("Inter", Font.PLAIN, 11));
         titleLabel.setForeground(GRAY_TEXT);
         card.add(titleLabel);
 
         JLabel valueLabel = new JLabel(value);
-        valueLabel.setFont(new Font("Inter", Font.BOLD, 24));
+        valueLabel.setFont(new Font("Inter", Font.BOLD, 28));
         valueLabel.setForeground(accent);
         card.add(valueLabel);
 

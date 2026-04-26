@@ -450,7 +450,7 @@ public class FOPayments extends JPanel {
     }
 
     private String formatEuro(double value) {
-        return String.format(PT, "EUR %,.2f", value);
+        return String.format(PT, "\u20AC%.0f", value);
     }
 
     private String safeText(String value, String fallback) {

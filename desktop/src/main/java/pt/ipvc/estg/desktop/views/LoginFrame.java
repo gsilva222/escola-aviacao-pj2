@@ -1,6 +1,8 @@
 package pt.ipvc.estg.desktop.views;
 
 import pt.ipvc.estg.desktop.DesktopApp;
+import pt.ipvc.estg.desktop.views.components.UITheme;
+import pt.ipvc.estg.dal.mock.MockDataSeeder;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -26,6 +28,7 @@ public class LoginFrame extends JFrame {
     private static final Color INPUT_BG = new Color(248, 250, 252);    // #F8FAFC
 
     public LoginFrame() {
+        MockDataSeeder.seedAllData();
         setTitle("AeroSchool BackOffice - Login");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1400, 800);
@@ -46,6 +49,7 @@ public class LoginFrame extends JFrame {
         mainPanel.add(rightPanel, BorderLayout.CENTER);
 
         add(mainPanel);
+        UITheme.polishTree(mainPanel);
     }
 
     private JPanel createLeftPanel() {
@@ -80,7 +84,10 @@ public class LoginFrame extends JFrame {
         // Back button
         JButton backButton = createStyledButton("← Voltar ao início", 12);
         backButton.setForeground(new Color(147, 197, 253)); // blue-300
-        backButton.addActionListener(e -> System.exit(0));
+        backButton.addActionListener(e -> {
+            dispose();
+            new LandingFrame().setVisible(true);
+        });
         backButton.setMaximumSize(new Dimension(200, 30));
         backButton.setAlignmentX(LEFT_ALIGNMENT);
         panel.add(backButton);
@@ -284,6 +291,7 @@ public class LoginFrame extends JFrame {
     }
 
     private void handleLogin(ActionEvent e) {
+        MockDataSeeder.seedAllData();
         String selectedRole = (String) roleCombo.getSelectedItem();
         setVisible(false);
         dispose();

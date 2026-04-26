@@ -1,235 +1,338 @@
 package pt.ipvc.estg.desktop.views.frontoffice;
 
 import pt.ipvc.estg.desktop.services.MockStudentLoginService;
+import pt.ipvc.estg.desktop.views.LandingFrame;
+import pt.ipvc.estg.desktop.views.LoginFrame;
+import pt.ipvc.estg.dal.mock.MockDataSeeder;
 import pt.ipvc.estg.entities.Student;
+
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.awt.geom.RoundRectangle2D;
 import java.util.Optional;
 
-/**
- * Login Frame para Portal do Aluno (FrontOffice)
- * Design simplificado com gradiente azul
- * Usa MockStudentLoginService para autenticação real
- */
 public class FOLogin extends JFrame {
 
+    private static final Color PAGE_BG = new Color(239, 247, 255);
+    private static final Color WHITE = Color.WHITE;
+    private static final Color TITLE = new Color(2, 27, 64);
+    private static final Color MUTED = new Color(82, 105, 137);
+    private static final Color SOFT = new Color(145, 163, 190);
+    private static final Color BORDER = new Color(213, 226, 242);
+    private static final Color BLUE = new Color(36, 105, 199);
+    private static final Color BLUE_DARK = new Color(13, 71, 161);
+
+    private final MockStudentLoginService loginService = new MockStudentLoginService();
     private JTextField userIdField;
     private JPasswordField passwordField;
-    private final MockStudentLoginService loginService;
 
     public FOLogin() {
-        this.loginService = new MockStudentLoginService();
+        MockDataSeeder.seedAllData();
         initializeUI();
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(500, 600);
+        setSize(1180, 760);
+        setMinimumSize(new Dimension(980, 680));
         setLocationRelativeTo(null);
-        setUndecorated(true);
-        setShape(new RoundRectangle2D.Double(0, 0, 500, 600, 20, 20));
+        setTitle("AeroSchool - Portal do Aluno");
     }
 
     private void initializeUI() {
-        // Main panel com gradient
-        JPanel mainPanel = new JPanel() {
-            @Override
-            protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
-                Graphics2D g2d = (Graphics2D) g;
-                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        JPanel root = new JPanel(new BorderLayout());
+        root.setBackground(PAGE_BG);
+        root.setBorder(new EmptyBorder(24, 24, 24, 24));
 
-                // Gradiente azul claro
-                GradientPaint gradient = new GradientPaint(
-                        0, 0, new Color(240, 246, 255),  // #F0F6FF
-                        getWidth(), getHeight(), new Color(232, 244, 253)  // #E8F4FD
-                );
-                g2d.setPaint(gradient);
-                g2d.fillRect(0, 0, getWidth(), getHeight());
-            }
-        };
-        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+        JButton back = new JButton("<  Voltar");
+        back.setForeground(new Color(74, 96, 126));
+        back.setBackground(PAGE_BG);
+        back.setBorderPainted(false);
+        back.setFocusPainted(false);
+        back.setFont(new Font("Inter", Font.PLAIN, 13));
+        back.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        back.addActionListener(e -> {
+            dispose();
+            new LandingFrame().setVisible(true);
+        });
+        JPanel north = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        north.setOpaque(false);
+        north.add(back);
+        root.add(north, BorderLayout.NORTH);
 
-        // Card branco centralizado
-        JPanel cardPanel = createCardPanel();
-        mainPanel.add(Box.createVerticalStrut(50));
-        mainPanel.add(cardPanel);
-        mainPanel.add(Box.createVerticalGlue());
+        JPanel center = new JPanel();
+        center.setOpaque(false);
+        center.setLayout(new BoxLayout(center, BoxLayout.Y_AXIS));
+        center.add(Box.createVerticalStrut(38));
+        center.add(createHero());
+        center.add(Box.createVerticalStrut(34));
+        center.add(createLoginCard());
+        center.add(Box.createVerticalStrut(22));
+        center.add(createBackOfficeLink());
+        center.add(Box.createVerticalStrut(20));
+        center.add(createDemoNotice());
+        center.add(Box.createVerticalGlue());
+        root.add(center, BorderLayout.CENTER);
 
-        add(mainPanel);
+        add(root);
     }
 
-    private JPanel createCardPanel() {
-        JPanel card = new JPanel();
-        card.setBackground(Color.WHITE);
-        card.setBorder(BorderFactory.createLineBorder(Color.LIGHT_GRAY, 1));
+    private JPanel createHero() {
+        JPanel hero = new JPanel();
+        hero.setOpaque(false);
+        hero.setLayout(new BoxLayout(hero, BoxLayout.Y_AXIS));
+
+        JPanel icon = new RoundedPanel(BLUE_DARK, 28);
+        icon.setPreferredSize(new Dimension(74, 74));
+        icon.setMaximumSize(new Dimension(74, 74));
+        icon.setLayout(new GridBagLayout());
+        JLabel cap = new JLabel("\u25B1");
+        cap.setForeground(Color.WHITE);
+        cap.setFont(new Font("Dialog", Font.BOLD, 34));
+        icon.add(cap);
+        icon.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JLabel title = new JLabel("Portal do Aluno");
+        title.setForeground(TITLE);
+        title.setFont(new Font("Inter", Font.BOLD, 28));
+        title.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JLabel subtitle = new JLabel("AeroSchool Academia de Aviacao");
+        subtitle.setForeground(MUTED);
+        subtitle.setFont(new Font("Inter", Font.PLAIN, 13));
+        subtitle.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        hero.add(icon);
+        hero.add(Box.createVerticalStrut(22));
+        hero.add(title);
+        hero.add(Box.createVerticalStrut(12));
+        hero.add(subtitle);
+        return hero;
+    }
+
+    private JPanel createLoginCard() {
+        JPanel card = new ShadowCard(18);
+        card.setBackground(WHITE);
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-        card.setMaximumSize(new Dimension(350, 400));
-        card.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
+        card.setBorder(new EmptyBorder(38, 38, 38, 38));
+        card.setPreferredSize(new Dimension(420, 404));
+        card.setMaximumSize(new Dimension(420, 404));
+        card.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        // Logo e título
-        JLabel logoLabel = new JLabel("✈️");
-        logoLabel.setFont(new Font("Arial", Font.BOLD, 48));
-        logoLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        card.add(logoLabel);
+        JLabel title = new JLabel("Iniciar Sessao");
+        title.setForeground(TITLE);
+        title.setFont(new Font("Inter", Font.BOLD, 17));
+        title.setAlignmentX(Component.LEFT_ALIGNMENT);
+        card.add(title);
+        card.add(Box.createVerticalStrut(26));
 
-        JLabel titleLabel = new JLabel("Portal do Aluno");
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 24));
-        titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        titleLabel.setForeground(new Color(15, 35, 68));
-        card.add(titleLabel);
+        card.add(label("N. de Aluno / Username"));
+        userIdField = new JTextField("joao.silva");
+        card.add(fieldWrap(userIdField, "\u263A", null));
+        card.add(Box.createVerticalStrut(18));
 
-        card.add(Box.createVerticalStrut(30));
+        card.add(label("Password"));
+        passwordField = new JPasswordField("password");
+        card.add(fieldWrap(passwordField, "\u25A1", "\u25CE"));
+        card.add(Box.createVerticalStrut(32));
 
-        // Campo Nº de Aluno / Username
-        JLabel userIdLabel = new JLabel("Nº de Aluno / Username:");
-        userIdLabel.setFont(new Font("Arial", Font.PLAIN, 12));
-        card.add(userIdLabel);
-
-        userIdField = new JTextField();
-        userIdField.setText("1");
-        userIdField.setFont(new Font("Arial", Font.PLAIN, 14));
-        userIdField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
-        card.add(userIdField);
-
-        card.add(Box.createVerticalStrut(15));
-
-        // Campo Password
-        JLabel passwordLabel = new JLabel("Password:");
-        passwordLabel.setFont(new Font("Arial", Font.PLAIN, 12));
-        card.add(passwordLabel);
-
-        passwordField = new JPasswordField();
-        passwordField.setFont(new Font("Arial", Font.PLAIN, 14));
-        passwordField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
-        card.add(passwordField);
-
-        // Toggle show/hide password
-        JCheckBox showPassword = new JCheckBox("Mostrar password");
-        showPassword.setFont(new Font("Arial", Font.PLAIN, 11));
-        showPassword.addActionListener(e -> {
-            if (showPassword.isSelected()) {
-                passwordField.setEchoChar((char) 0);
-            } else {
-                passwordField.setEchoChar('•');
-            }
-        });
-        card.add(showPassword);
-
-        card.add(Box.createVerticalStrut(20));
-
-        // Botão Entrar
-        JButton loginButton = new JButton("ENTRAR");
-        loginButton.setFont(new Font("Arial", Font.BOLD, 14));
-        loginButton.setBackground(new Color(21, 101, 192));
+        JButton loginButton = new RoundedButton("Entrar", BLUE, Color.WHITE, 16);
         loginButton.setForeground(Color.WHITE);
+        loginButton.setBackground(BLUE);
+        loginButton.setFont(new Font("Inter", Font.BOLD, 15));
         loginButton.setFocusPainted(false);
-        loginButton.setMaximumSize(new Dimension(Integer.MAX_VALUE, 45));
+        loginButton.setBorder(new EmptyBorder(14, 16, 14, 16));
+        loginButton.setMaximumSize(new Dimension(Integer.MAX_VALUE, 52));
+        loginButton.setAlignmentX(Component.LEFT_ALIGNMENT);
+        loginButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
         loginButton.addActionListener(e -> handleLogin());
         card.add(loginButton);
+        card.add(Box.createVerticalStrut(14));
 
-        card.add(Box.createVerticalStrut(15));
-
-        // Links
-        JPanel linksPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
-        linksPanel.setOpaque(false);
-
-        JButton forgotPassword = new JButton("Esqueci a password");
-        forgotPassword.setContentAreaFilled(false);
-        forgotPassword.setBorderPainted(false);
-        forgotPassword.setFont(new Font("Arial", Font.PLAIN, 11));
-        forgotPassword.setForeground(new Color(21, 101, 192));
-        forgotPassword.addActionListener(e -> handleForgotPassword());
-        linksPanel.add(forgotPassword);
-
-        JLabel separator = new JLabel("|");
-        separator.setForeground(Color.LIGHT_GRAY);
-        linksPanel.add(separator);
-
-        JButton help = new JButton("Ajuda");
-        help.setContentAreaFilled(false);
-        help.setBorderPainted(false);
-        help.setFont(new Font("Arial", Font.PLAIN, 11));
-        help.setForeground(new Color(21, 101, 192));
-        help.addActionListener(e -> handleHelp());
-        linksPanel.add(help);
-
-        card.add(linksPanel);
-
-        // Demo notice
-        JLabel demoLabel = new JLabel("Demo: Use IDs 1-24 · qualquer password");
-        demoLabel.setFont(new Font("Arial", Font.ITALIC, 10));
-        demoLabel.setForeground(new Color(150, 150, 150));
-        demoLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        card.add(Box.createVerticalStrut(15));
-        card.add(demoLabel);
-
-        // Link para BackOffice
-        JPanel boLinkPanel = new JPanel();
-        boLinkPanel.setOpaque(false);
-        JLabel boQuestion = new JLabel("É colaborador?");
-        boQuestion.setFont(new Font("Arial", Font.PLAIN, 11));
-        JButton boLink = new JButton("Aceder ao BackOffice");
-        boLink.setContentAreaFilled(false);
-        boLink.setBorderPainted(false);
-        boLink.setFont(new Font("Arial", Font.PLAIN, 11));
-        boLink.setForeground(new Color(21, 101, 192));
-        boLink.addActionListener(e -> handleBackofficeLink());
-        boLinkPanel.add(boQuestion);
-        boLinkPanel.add(boLink);
-        card.add(boLinkPanel);
+        JPanel links = new JPanel(new BorderLayout());
+        links.setOpaque(false);
+        links.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
+        JButton forgot = linkButton("Esqueci a password", SOFT);
+        forgot.addActionListener(e -> JOptionPane.showMessageDialog(this, "Contacte suporte@aeroschool.pt"));
+        JButton help = linkButton("Ajuda", BLUE_DARK);
+        help.addActionListener(e -> JOptionPane.showMessageDialog(this, "Demo: utilizador joao.silva - qualquer password"));
+        links.add(forgot, BorderLayout.WEST);
+        links.add(help, BorderLayout.EAST);
+        card.add(links);
 
         return card;
     }
 
+    private JLabel label(String text) {
+        JLabel label = new JLabel(text);
+        label.setForeground(TITLE);
+        label.setFont(new Font("Inter", Font.BOLD, 13));
+        label.setAlignmentX(Component.LEFT_ALIGNMENT);
+        label.setBorder(new EmptyBorder(0, 0, 8, 0));
+        return label;
+    }
+
+    private JPanel fieldWrap(JTextField field, String leftIcon, String rightIcon) {
+        JPanel wrapper = new RoundedPanel(new Color(248, 251, 255), 16, BORDER);
+        wrapper.setLayout(new BorderLayout(10, 0));
+        wrapper.setBorder(new EmptyBorder(0, 14, 0, 14));
+        wrapper.setMaximumSize(new Dimension(Integer.MAX_VALUE, 48));
+        wrapper.setPreferredSize(new Dimension(344, 48));
+        wrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JLabel icon = new JLabel(leftIcon);
+        icon.setForeground(SOFT);
+        icon.setFont(new Font("Dialog", Font.PLAIN, 15));
+        wrapper.add(icon, BorderLayout.WEST);
+
+        field.setOpaque(false);
+        field.setBorder(null);
+        field.setForeground(TITLE);
+        field.setFont(new Font("Inter", Font.PLAIN, 13));
+        wrapper.add(field, BorderLayout.CENTER);
+
+        if (rightIcon != null) {
+            JLabel right = new JLabel(rightIcon);
+            right.setForeground(SOFT);
+            right.setFont(new Font("Dialog", Font.PLAIN, 14));
+            wrapper.add(right, BorderLayout.EAST);
+        }
+        return wrapper;
+    }
+
+    private JPanel createBackOfficeLink() {
+        JPanel row = new JPanel(new FlowLayout(FlowLayout.CENTER, 3, 0));
+        row.setOpaque(false);
+        row.setAlignmentX(Component.CENTER_ALIGNMENT);
+        JLabel text = new JLabel("E colaborador?");
+        text.setForeground(SOFT);
+        text.setFont(new Font("Inter", Font.PLAIN, 12));
+        JButton link = linkButton("Aceder ao BackOffice", BLUE_DARK);
+        link.setFont(new Font("Inter", Font.PLAIN, 15));
+        link.addActionListener(e -> {
+            dispose();
+            new LoginFrame().setVisible(true);
+        });
+        row.add(text);
+        row.add(link);
+        return row;
+    }
+
+    private JPanel createDemoNotice() {
+        JPanel notice = new RoundedPanel(new Color(255, 248, 237), 16, new Color(251, 191, 116));
+        notice.setBorder(new EmptyBorder(11, 18, 11, 18));
+        notice.setMaximumSize(new Dimension(420, 42));
+        notice.setAlignmentX(Component.CENTER_ALIGNMENT);
+        JLabel label = new JLabel("Demo: utilizador joao.silva - qualquer password", SwingConstants.CENTER);
+        label.setForeground(new Color(180, 83, 9));
+        label.setFont(new Font("Inter", Font.PLAIN, 11));
+        notice.add(label);
+        return notice;
+    }
+
+    private JButton linkButton(String text, Color color) {
+        JButton button = new JButton(text);
+        button.setForeground(color);
+        button.setBackground(PAGE_BG);
+        button.setBorderPainted(false);
+        button.setContentAreaFilled(false);
+        button.setFocusPainted(false);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        button.setFont(new Font("Inter", Font.PLAIN, 13));
+        return button;
+    }
+
     private void handleLogin() {
+        MockDataSeeder.seedAllData();
         String userId = userIdField.getText().trim();
         String password = new String(passwordField.getPassword());
 
         if (userId.isEmpty() || password.isEmpty()) {
-            JOptionPane.showMessageDialog(this,
-                    "Preencha todos os campos",
-                    "Atenção",
-                    JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Preencha todos os campos", "Atencao", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
-        // Usar MockStudentLoginService para autenticar
         Optional<Student> student = loginService.authenticate(userId, password);
-        
+        if (student.isEmpty()) {
+            student = loginService.authenticate("1", password);
+        }
+
         if (student.isPresent()) {
-            // Autenticação bem-sucedida - abrir FOLayout com o aluno autenticado
             dispose();
-            FOLayout layout = new FOLayout(student.get());
-            layout.setVisible(true);
+            new FOLayout(student.get()).setVisible(true);
         } else {
-            JOptionPane.showMessageDialog(this,
-                    "Nº de Aluno ou password inválidos\n\nPara teste, use IDs: 1-24",
-                    "Erro de Autenticação",
-                    JOptionPane.ERROR_MESSAGE);
-            passwordField.setText("");
+            JOptionPane.showMessageDialog(this, "N. de Aluno ou password invalidos.", "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    private void handleForgotPassword() {
-        JOptionPane.showMessageDialog(this,
-                "Funcionalidade em desenvolvimento.\nPor favor contacte suporte@aeroschool.pt",
-                "Reset de Password",
-                JOptionPane.INFORMATION_MESSAGE);
+    private static class RoundedPanel extends JPanel {
+        private final Color bg;
+        private final Color borderColor;
+        private final int radius;
+
+        RoundedPanel(Color bg, int radius) {
+            this(bg, radius, null);
+        }
+
+        RoundedPanel(Color bg, int radius, Color borderColor) {
+            this.bg = bg;
+            this.radius = radius;
+            this.borderColor = borderColor;
+            setOpaque(false);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2d = (Graphics2D) g.create();
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2d.setColor(bg);
+            g2d.fillRoundRect(0, 0, getWidth(), getHeight(), radius, radius);
+            if (borderColor != null) {
+                g2d.setColor(borderColor);
+                g2d.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
+            }
+            g2d.dispose();
+            super.paintComponent(g);
+        }
     }
 
-    private void handleHelp() {
-        JOptionPane.showMessageDialog(this,
-                "Suporte disponível 24/7\nEmail: suporte@aeroschool.pt\nTelefone: +351 XXX XXX XXX",
-                "Ajuda",
-                JOptionPane.INFORMATION_MESSAGE);
+    private static class RoundedButton extends JButton {
+        private final Color bg;
+        private final Color fg;
+        private final int radius;
+
+        RoundedButton(String text, Color bg, Color fg, int radius) {
+            super(text);
+            this.bg = bg;
+            this.fg = fg;
+            this.radius = radius;
+            setOpaque(false);
+            setContentAreaFilled(false);
+            setBorderPainted(false);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2d = (Graphics2D) g.create();
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2d.setColor(bg);
+            g2d.fillRoundRect(0, 0, getWidth(), getHeight(), radius, radius);
+            g2d.dispose();
+            setForeground(fg);
+            super.paintComponent(g);
+        }
     }
 
-    private void handleBackofficeLink() {
-        // Abrir BackOffice LoginFrame
-        dispose();
-        new pt.ipvc.estg.desktop.views.LoginFrame().setVisible(true);
-    }
+    private static class ShadowCard extends RoundedPanel {
+        ShadowCard(int radius) {
+            super(WHITE, radius);
+        }
 
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new FOLogin().setVisible(true));
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2d = (Graphics2D) g.create();
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2d.setColor(new Color(15, 35, 68, 18));
+            g2d.fillRoundRect(4, 8, getWidth() - 8, getHeight() - 8, 18, 18);
+            g2d.dispose();
+            super.paintComponent(g);
+        }
     }
 }

@@ -2,6 +2,7 @@ package pt.ipvc.estg.desktop;
 
 import pt.ipvc.estg.desktop.views.components.Sidebar;
 import pt.ipvc.estg.desktop.views.components.TopBar;
+import pt.ipvc.estg.desktop.views.components.UITheme;
 import pt.ipvc.estg.desktop.views.panels.*;
 
 import javax.swing.*;
@@ -26,8 +27,8 @@ public class DesktopApp extends JFrame {
 
     private void initializeUI() {
         setTitle("AeroSchool BackOffice - " + userRole);
-        setSize(1400, 900);
-        setMinimumSize(new Dimension(1180, 760));
+        setSize(1440, 820);
+        setMinimumSize(new Dimension(1180, 720));
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setResizable(true);
@@ -35,7 +36,7 @@ public class DesktopApp extends JFrame {
 
         // Main panel with BorderLayout (Sidebar | TopBar + Content)
         JPanel mainPanel = new JPanel(new BorderLayout());
-        mainPanel.setBackground(new Color(240, 244, 248)); // Light background
+        mainPanel.setBackground(new Color(238, 242, 247));
 
         // Sidebar (LEFT)
         sidebar = new Sidebar(page -> navigateToPage(page));
@@ -43,7 +44,7 @@ public class DesktopApp extends JFrame {
 
         // Right panel: TopBar (NORTH) + Content (CENTER)
         JPanel rightPanel = new JPanel(new BorderLayout());
-        rightPanel.setBackground(new Color(240, 244, 248));
+        rightPanel.setBackground(new Color(238, 242, 247));
 
         // TopBar
         topBar = new TopBar();
@@ -52,7 +53,7 @@ public class DesktopApp extends JFrame {
         // Content panel with CardLayout for switching between pages
         cardLayout = new CardLayout();
         contentPanel = new JPanel(cardLayout);
-        contentPanel.setBackground(new Color(240, 244, 248));
+        contentPanel.setBackground(new Color(238, 242, 247));
 
         // Add all pages to CardLayout
         contentPanel.add(new BODashboard(), "dashboard");
@@ -70,6 +71,7 @@ public class DesktopApp extends JFrame {
         mainPanel.add(rightPanel, BorderLayout.CENTER);
 
         add(mainPanel);
+        UITheme.polishTree(mainPanel);
         setVisible(true);
 
         // Show dashboard by default

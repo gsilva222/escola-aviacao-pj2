@@ -25,20 +25,20 @@ public class TopBar extends JPanel {
         setBackground(WHITE);
         setLayout(new BorderLayout(16, 0));
         setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_COLOR));
-        setPreferredSize(new Dimension(Integer.MAX_VALUE, 74));
-        setMinimumSize(new Dimension(900, 74));
+        setPreferredSize(new Dimension(Integer.MAX_VALUE, 56));
+        setMinimumSize(new Dimension(900, 56));
 
         JPanel leftPanel = new JPanel();
         leftPanel.setOpaque(false);
         leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.Y_AXIS));
-        leftPanel.setBorder(new EmptyBorder(10, 24, 10, 0));
+        leftPanel.setBorder(new EmptyBorder(7, 18, 7, 0));
 
         pageTitleLabel = new JLabel("Dashboard");
-        pageTitleLabel.setFont(new Font("Inter", Font.BOLD, 17));
+        pageTitleLabel.setFont(new Font("Inter", Font.BOLD, 13));
         pageTitleLabel.setForeground(DARK_TEXT);
 
         subtitleLabel = new JLabel("AeroSchool BackOffice - " + formatToday());
-        subtitleLabel.setFont(new Font("Inter", Font.PLAIN, 11));
+        subtitleLabel.setFont(new Font("Inter", Font.PLAIN, 9));
         subtitleLabel.setForeground(MUTED_TEXT);
 
         leftPanel.add(pageTitleLabel);
@@ -49,7 +49,7 @@ public class TopBar extends JPanel {
 
         JPanel centerPanel = new JPanel(new BorderLayout());
         centerPanel.setOpaque(false);
-        centerPanel.setBorder(new EmptyBorder(0, 8, 0, 8));
+        centerPanel.setBorder(new EmptyBorder(0, 12, 0, 8));
         centerPanel.add(createSearchField(), BorderLayout.CENTER);
         add(centerPanel, BorderLayout.CENTER);
 
@@ -70,11 +70,11 @@ public class TopBar extends JPanel {
         JPanel wrapper = new JPanel(new BorderLayout(8, 0));
         wrapper.setBackground(INPUT_BG);
         wrapper.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDER_COLOR, 1),
-                new EmptyBorder(7, 10, 7, 10)
+                BorderFactory.createLineBorder(new Color(203, 213, 225), 1),
+                new EmptyBorder(5, 11, 5, 11)
         ));
-        wrapper.setPreferredSize(new Dimension(360, 40));
-        wrapper.setMinimumSize(new Dimension(240, 40));
+        wrapper.setPreferredSize(new Dimension(350, 34));
+        wrapper.setMinimumSize(new Dimension(240, 34));
 
         JLabel icon = new JLabel("\u2315");
         icon.setForeground(MUTED_TEXT);
@@ -84,7 +84,7 @@ public class TopBar extends JPanel {
         field.setBorder(null);
         field.setOpaque(false);
         field.setForeground(ICON_TEXT);
-        field.setFont(new Font("Inter", Font.PLAIN, 12));
+        field.setFont(new Font("Inter", Font.PLAIN, 10));
 
         wrapper.add(icon, BorderLayout.WEST);
         wrapper.add(field, BorderLayout.CENTER);
@@ -92,7 +92,7 @@ public class TopBar extends JPanel {
     }
 
     private JComponent createRightPanel() {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 12));
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
         panel.setOpaque(false);
         panel.setBorder(new EmptyBorder(0, 0, 0, 16));
 
@@ -104,10 +104,10 @@ public class TopBar extends JPanel {
     private JComponent createNotificationButton() {
         JPanel wrapper = new JPanel(null);
         wrapper.setOpaque(false);
-        wrapper.setPreferredSize(new Dimension(36, 36));
+        wrapper.setPreferredSize(new Dimension(30, 30));
 
         JButton bell = new JButton("\u25CF");
-        bell.setBounds(0, 0, 36, 36);
+        bell.setBounds(0, 0, 30, 30);
         bell.setFocusPainted(false);
         bell.setBorderPainted(false);
         bell.setCursor(new Cursor(Cursor.HAND_CURSOR));
@@ -117,7 +117,7 @@ public class TopBar extends JPanel {
 
         JPanel dot = new JPanel();
         dot.setBackground(new Color(239, 68, 68));
-        dot.setBounds(23, 7, 8, 8);
+        dot.setBounds(21, 5, 7, 7);
 
         wrapper.add(bell);
         wrapper.add(dot);
@@ -132,10 +132,10 @@ public class TopBar extends JPanel {
                 BorderFactory.createLineBorder(new Color(241, 245, 249), 1),
                 new EmptyBorder(6, 8, 6, 8)
         ));
-        chip.setPreferredSize(new Dimension(176, 42));
+        chip.setPreferredSize(new Dimension(160, 38));
 
         JLabel avatar = new JLabel("AD", SwingConstants.CENTER);
-        avatar.setPreferredSize(new Dimension(28, 28));
+        avatar.setPreferredSize(new Dimension(26, 26));
         avatar.setOpaque(true);
         avatar.setBackground(BLUE_PRIMARY);
         avatar.setForeground(Color.WHITE);
@@ -146,10 +146,10 @@ public class TopBar extends JPanel {
         text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
         JLabel name = new JLabel("Admin. Geral");
         name.setForeground(DARK_TEXT);
-        name.setFont(new Font("Inter", Font.BOLD, 11));
+        name.setFont(new Font("Inter", Font.BOLD, 10));
         JLabel role = new JLabel("Administrador");
         role.setForeground(MUTED_TEXT);
-        role.setFont(new Font("Inter", Font.PLAIN, 10));
+        role.setFont(new Font("Inter", Font.PLAIN, 9));
         text.add(name);
         text.add(role);
 

@@ -63,6 +63,18 @@ public class FODocuments extends JPanel {
             documents.add(new DocumentInfo(file));
         }
         documents.sort(Comparator.comparing((DocumentInfo doc) -> doc.file.lastModified()).reversed());
+        if (documents.isEmpty()) {
+            addMockDocuments();
+        }
+    }
+
+    private void addMockDocuments() {
+        documents.add(DocumentInfo.mock("Certificado de Matricula", "Certificado", "certificate", LocalDate.of(2024, 1, 15), null));
+        documents.add(DocumentInfo.mock("Certificado Medico Classe 2", "Medico", "medical", LocalDate.of(2024, 8, 20), LocalDate.of(2026, 8, 20)));
+        documents.add(DocumentInfo.mock("Cartao de Identificacao de Estudante", "Identificacao", "id", LocalDate.of(2024, 1, 15), null));
+        documents.add(DocumentInfo.mock("Contrato de Formacao", "Contrato", "contract", LocalDate.of(2024, 1, 15), null));
+        documents.add(DocumentInfo.mock("Seguro de Acidentes Pessoais", "Seguro", "insurance", LocalDate.of(2024, 1, 1), LocalDate.of(2025, 12, 31)));
+        documents.add(DocumentInfo.mock("Declaracao de Frequencia - Fev 2025", "Declaracao", "declaration", LocalDate.of(2025, 2, 28), null));
     }
 
     private void initializeUI() {
@@ -200,12 +212,12 @@ public class FODocuments extends JPanel {
         body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
         body.setBorder(new EmptyBorder(10, 0, 0, 0));
 
-        JLabel name = new JLabel(doc.file.getName());
+        JLabel name = new JLabel(doc.displayName);
         name.setForeground(TITLE);
         name.setFont(new Font("Inter", Font.BOLD, 12));
         body.add(name);
 
-        JLabel desc = new JLabel("Documento oficial do percurso academico");
+        JLabel desc = new JLabel(doc.description);
         desc.setForeground(MUTED);
         desc.setFont(new Font("Inter", Font.PLAIN, 11));
         body.add(desc);
@@ -219,9 +231,9 @@ public class FODocuments extends JPanel {
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         actions.setOpaque(false);
         JButton viewBtn = createSecondaryButton("Abrir");
-        viewBtn.addActionListener(e -> openDocument(doc.file));
+        viewBtn.addActionListener(e -> openOrPreview(doc));
         JButton downloadBtn = createPrimaryButton("Download");
-        downloadBtn.addActionListener(e -> saveCopy(doc.file));
+        downloadBtn.addActionListener(e -> saveOrPreview(doc));
         actions.add(viewBtn);
         actions.add(downloadBtn);
         body.add(actions);
@@ -287,7 +299,7 @@ public class FODocuments extends JPanel {
 
         JPanel firstLine = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         firstLine.setOpaque(false);
-        JLabel name = new JLabel(doc.file.getName());
+        JLabel name = new JLabel(doc.displayName);
         name.setForeground(TITLE);
         name.setFont(new Font("Inter", Font.BOLD, 12));
         firstLine.add(name);
@@ -319,11 +331,11 @@ public class FODocuments extends JPanel {
         right.add(status);
 
         JButton viewBtn = createSecondaryButton("Abrir");
-        viewBtn.addActionListener(e -> openDocument(doc.file));
+        viewBtn.addActionListener(e -> openOrPreview(doc));
         right.add(viewBtn);
 
         JButton downloadBtn = createSecondaryButton("Guardar");
-        downloadBtn.addActionListener(e -> saveCopy(doc.file));
+        downloadBtn.addActionListener(e -> saveOrPreview(doc));
         right.add(downloadBtn);
 
         row.add(right, BorderLayout.EAST);
@@ -392,6 +404,22 @@ public class FODocuments extends JPanel {
         }
     }
 
+    private void openOrPreview(DocumentInfo doc) {
+        if (doc.file.exists()) {
+            openDocument(doc.file);
+        } else {
+            JOptionPane.showMessageDialog(this, doc.displayName + "\n" + doc.description, "Documento", JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+
+    private void saveOrPreview(DocumentInfo doc) {
+        if (doc.file.exists()) {
+            saveCopy(doc.file);
+        } else {
+            JOptionPane.showMessageDialog(this, "Download demo em desenvolvimento.", "Documento", JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+
     private void saveCopy(File file) {
         JFileChooser chooser = new JFileChooser();
         chooser.setSelectedFile(new File(file.getName()));
@@ -409,6 +437,8 @@ public class FODocuments extends JPanel {
 
     private static class DocumentInfo {
         private final File file;
+        private final String displayName;
+        private final String description;
         private final LocalDate issueDate;
         private final LocalDate expiryDate;
         private final boolean valid;
@@ -421,6 +451,8 @@ public class FODocuments extends JPanel {
 
         private DocumentInfo(File file) {
             this.file = file;
+            this.displayName = stripExtension(file.getName());
+            this.description = "Documento oficial do percurso academico";
             this.issueDate = Instant.ofEpochMilli(file.lastModified()).atZone(ZoneId.systemDefault()).toLocalDate();
             this.expiryDate = inferExpiryDate(file, issueDate);
             this.valid = !file.getName().toLowerCase(Locale.ROOT).contains("invalid")
@@ -455,9 +487,61 @@ public class FODocuments extends JPanel {
             }
         }
 
+        private DocumentInfo(String displayName, String typeLabel, String type, LocalDate issueDate, LocalDate expiryDate) {
+            this.file = new File(displayName + ".pdf");
+            this.displayName = displayName;
+            this.description = switch (type) {
+                case "certificate" -> "Certificado de inscricao no curso de Piloto Privado (PPL) da AeroSchool";
+                case "declaration" -> "Declaracao de frequencia do percurso PPL";
+                case "medical" -> "Certificado medico necessario para formacao pratica";
+                case "contract" -> "Contrato de formacao assinado";
+                case "insurance" -> "Apolice de seguro de acidentes pessoais";
+                default -> "Documento do aluno";
+            };
+            this.issueDate = issueDate;
+            this.expiryDate = expiryDate;
+            this.valid = expiryDate == null || !expiryDate.isBefore(LocalDate.now());
+            this.sizeKb = 245;
+            this.type = type;
+            this.typeLabel = typeLabel;
+            this.typeIcon = switch (type) {
+                case "medical" -> "\u26E8";
+                case "id" -> "\u25AD";
+                case "contract" -> "\uD83D\uDCC4";
+                case "insurance" -> "\u25EF";
+                case "declaration" -> "\uD83D\uDCC3";
+                default -> "\u269D";
+            };
+            this.typeColor = switch (type) {
+                case "medical" -> new Color(22, 163, 74);
+                case "id" -> new Color(124, 58, 237);
+                case "contract" -> new Color(217, 119, 6);
+                case "insurance" -> new Color(220, 38, 38);
+                case "declaration" -> new Color(100, 116, 139);
+                default -> new Color(29, 78, 216);
+            };
+            this.typeBg = switch (type) {
+                case "medical" -> new Color(220, 252, 231);
+                case "id" -> new Color(243, 232, 255);
+                case "contract" -> new Color(254, 243, 199);
+                case "insurance" -> new Color(254, 226, 226);
+                case "declaration" -> new Color(241, 245, 249);
+                default -> new Color(219, 234, 254);
+            };
+        }
+
+        private static DocumentInfo mock(String displayName, String typeLabel, String type, LocalDate issueDate, LocalDate expiryDate) {
+            return new DocumentInfo(displayName, typeLabel, type, issueDate, expiryDate);
+        }
+
         private static String extension(String name) {
             int idx = name.lastIndexOf('.');
             return idx < 0 ? "" : name.substring(idx + 1).toLowerCase(Locale.ROOT);
+        }
+
+        private static String stripExtension(String name) {
+            int idx = name.lastIndexOf('.');
+            return idx < 0 ? name : name.substring(0, idx);
         }
 
         private static LocalDate inferExpiryDate(File file, LocalDate issueDate) {
