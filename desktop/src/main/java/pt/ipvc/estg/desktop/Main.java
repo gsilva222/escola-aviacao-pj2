@@ -14,6 +14,9 @@ public class Main {
         // Seed de dados mock na inicialização
         MockDataSeeder.seedAllData();
         
-        SwingUtilities.invokeLater(LoginFrame::new);
+        SwingUtilities.invokeLater(() -> {
+            LoginFrame loginFrame = new LoginFrame();
+            loginFrame.setVisible(true);
+        });
     }
 }

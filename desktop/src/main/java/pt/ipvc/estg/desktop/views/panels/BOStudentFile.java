@@ -18,6 +18,7 @@ import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Locale;
 
 /**
  * Dialog para visualizar detalhes de um estudante com 6 abas
@@ -131,11 +132,17 @@ public class BOStudentFile extends JDialog {
         btnExport.addActionListener(e -> exportFile());
         actionPanel.add(btnExport);
 
+        AvatarCircle avatar = new AvatarCircle(getStudentInitials(), getAvatarColor(student.getName()));
+        JPanel centerInfo = new JPanel(new BorderLayout(10, 0));
+        centerInfo.setOpaque(false);
+        centerInfo.add(avatar, BorderLayout.WEST);
+        centerInfo.add(infoPanel, BorderLayout.CENTER);
+
         // Combine
         JPanel topPanel = new JPanel(new BorderLayout());
         topPanel.setOpaque(false);
         topPanel.add(btnBack, BorderLayout.WEST);
-        topPanel.add(infoPanel, BorderLayout.CENTER);
+        topPanel.add(centerInfo, BorderLayout.CENTER);
         topPanel.add(actionPanel, BorderLayout.EAST);
 
         panel.add(topPanel, BorderLayout.CENTER);
@@ -733,5 +740,64 @@ public class BOStudentFile extends JDialog {
         
         documentsList.revalidate();
         documentsList.repaint();
+    }
+
+    private String getStudentInitials() {
+        String name = student.getName();
+        if (name == null || name.isBlank()) {
+            return "AL";
+        }
+        String[] parts = name.trim().split("\\s+");
+        if (parts.length == 1) {
+            return parts[0].substring(0, Math.min(2, parts[0].length())).toUpperCase(Locale.ROOT);
+        }
+        return (parts[0].substring(0, 1) + parts[1].substring(0, 1)).toUpperCase(Locale.ROOT);
+    }
+
+    private Color getAvatarColor(String name) {
+        Color[] palette = {
+                new Color(21, 101, 192),
+                new Color(37, 99, 235),
+                new Color(29, 78, 216),
+                new Color(14, 116, 144),
+                new Color(79, 70, 229),
+                new Color(124, 58, 237),
+                new Color(190, 24, 93),
+                new Color(225, 29, 72),
+                new Color(217, 119, 6),
+                new Color(202, 138, 4),
+                new Color(22, 163, 74),
+                new Color(5, 150, 105)
+        };
+        int idx = Math.abs((name == null ? 0 : name.hashCode())) % palette.length;
+        return palette[idx];
+    }
+
+    private static class AvatarCircle extends JComponent {
+        private final String initials;
+        private final Color color;
+
+        AvatarCircle(String initials, Color color) {
+            this.initials = initials;
+            this.color = color;
+            setPreferredSize(new Dimension(44, 44));
+            setMinimumSize(new Dimension(44, 44));
+            setMaximumSize(new Dimension(44, 44));
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2d = (Graphics2D) g.create();
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2d.setColor(color);
+            g2d.fillOval(0, 0, getWidth() - 1, getHeight() - 1);
+            g2d.setColor(Color.WHITE);
+            g2d.setFont(new Font("Inter", Font.BOLD, 13));
+            FontMetrics fm = g2d.getFontMetrics();
+            int x = (getWidth() - fm.stringWidth(initials)) / 2;
+            int y = (getHeight() + fm.getAscent() - fm.getDescent()) / 2;
+            g2d.drawString(initials, x, y);
+            g2d.dispose();
+        }
     }
 }

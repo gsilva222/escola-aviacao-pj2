@@ -15,6 +15,7 @@ import java.awt.*;
 public class DesktopApp extends JFrame {
     private String userRole;
     private TopBar topBar;
+    private Sidebar sidebar;
     private JPanel contentPanel;
     private CardLayout cardLayout;
 
@@ -26,6 +27,7 @@ public class DesktopApp extends JFrame {
     private void initializeUI() {
         setTitle("AeroSchool BackOffice - " + userRole);
         setSize(1400, 900);
+        setMinimumSize(new Dimension(1180, 760));
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setResizable(true);
@@ -36,7 +38,7 @@ public class DesktopApp extends JFrame {
         mainPanel.setBackground(new Color(240, 244, 248)); // Light background
 
         // Sidebar (LEFT)
-        Sidebar sidebar = new Sidebar(page -> navigateToPage(page));
+        sidebar = new Sidebar(page -> navigateToPage(page));
         mainPanel.add(sidebar, BorderLayout.WEST);
 
         // Right panel: TopBar (NORTH) + Content (CENTER)
@@ -91,6 +93,9 @@ public class DesktopApp extends JFrame {
 
         if (topBar != null) {
             topBar.setPageTitle(pageTitle);
+        }
+        if (sidebar != null) {
+            sidebar.setActivePage(page);
         }
 
         // Switch to page in CardLayout
