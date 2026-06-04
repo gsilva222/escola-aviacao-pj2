@@ -5,14 +5,17 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import pt.ipvc.estg.entities.Course;
+import pt.ipvc.estg.entities.Instructor;
 import pt.ipvc.estg.entities.Student;
 import pt.ipvc.estg.web.dto.StudentRequest;
 import pt.ipvc.estg.web.dto.StudentResponse;
 import pt.ipvc.estg.web.mappers.StudentMapper;
 import pt.ipvc.estg.web.repositories.CourseRepository;
+import pt.ipvc.estg.web.repositories.InstructorRepository;
 import pt.ipvc.estg.web.repositories.StudentRepository;
 import pt.ipvc.estg.web.validation.BusinessRules;
 
@@ -24,18 +27,23 @@ public class StudentController {
 
     private final StudentRepository studentRepository;
     private final CourseRepository courseRepository;
+    private final InstructorRepository instructorRepository;
 
-    public StudentController(StudentRepository studentRepository, CourseRepository courseRepository) {
+    public StudentController(StudentRepository studentRepository,
+                             CourseRepository courseRepository,
+                             InstructorRepository instructorRepository) {
         this.studentRepository = studentRepository;
         this.courseRepository = courseRepository;
+        this.instructorRepository = instructorRepository;
     }
 
+    @Transactional(readOnly = true)
     @GetMapping
-    public Page<StudentResponse> getStudents(@RequestParam(required = false) Integer courseId,
-                                             @RequestParam(required = false) String status,
-                                             @RequestParam(defaultValue = "0") int page,
-                                             @RequestParam(defaultValue = "20") int size,
-                                             @RequestParam(required = false) String sort) {
+    public Page<StudentResponse> getStudents(@RequestParam(value = "courseId", required = false) Integer courseId,
+                                             @RequestParam(value = "status", required = false) String status,
+                                             @RequestParam(value = "page", defaultValue = "0") int page,
+                                             @RequestParam(value = "size", defaultValue = "20") int size,
+                                             @RequestParam(value = "sort", required = false) String sort) {
         PageRequest pageable = PageRequest.of(page, size, buildSort(sort));
         if (courseId != null) {
             List<StudentResponse> content = studentRepository.findByCourse_Id(courseId, pageable)
@@ -52,6 +60,7 @@ public class StudentController {
         return studentRepository.findAll(pageable).map(StudentMapper::toResponse);
     }
 
+    @Transactional(readOnly = true)
     @GetMapping("/{id}")
     public StudentResponse getStudent(@PathVariable("id") Integer id) {
         Student student = studentRepository.findById(id)
@@ -88,6 +97,7 @@ public class StudentController {
         if (request.flightHours() != null) student.setFlightHours(request.flightHours());
         if (request.theoreticalHours() != null) student.setTheoreticalHours(request.theoreticalHours());
         if (request.paymentStatus() != null) student.setPaymentStatus(BusinessRules.requireAllowed("PaymentStatus", request.paymentStatus(), BusinessRules.STUDENT_PAYMENT_STATUSES));
+        applyInstructor(student, request.instructorId());
 
         Student created = studentRepository.save(student);
         return StudentMapper.toResponse(created);
@@ -137,6 +147,9 @@ public class StudentController {
                     .orElseThrow(() -> new ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Curso nao encontrado"));
             student.setCourse(course);
         }
+        if (request.instructorId() != null) {
+            applyInstructor(student, request.instructorId());
+        }
 
         Student updated = studentRepository.save(student);
         return StudentMapper.toResponse(updated);
@@ -148,6 +161,15 @@ public class StudentController {
             throw new ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Estudante nao encontrado");
         }
         studentRepository.deleteById(id);
+    }
+
+    private void applyInstructor(Student student, Integer instructorId) {
+        if (instructorId == null) {
+            return;
+        }
+        Instructor instructor = instructorRepository.findById(instructorId)
+                .orElseThrow(() -> new ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Instrutor nao encontrado"));
+        student.setInstructor(instructor);
     }
 
     private void validateProgress(Integer progress) {

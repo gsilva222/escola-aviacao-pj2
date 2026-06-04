@@ -1,71 +1,74 @@
-# Escola de Aviacao - Sistema de Gestao
+# Escola de Aviação — PJ2
 
-Projeto Java multi-modulo para gerir uma escola de aviacao.
+Projeto multi-módulo Maven: **desktop** (Swing), **web** (API REST Spring Boot) e módulos partilhados.
 
-## Modulos
+## Módulo Web (API)
 
-- `shared`: entidades e DAL
-- `backend-common`: servicos de negocio
-- `desktop`: aplicacao Swing
-- `web`: API Spring Boot
+Base URL: `http://localhost:8080/api`
 
-## Como executar
+### Variáveis de ambiente
 
-Consulta o guia: [COMO_CORRER_O_PROJETO.md](./COMO_CORRER_O_PROJETO.md)
+| Variável | Descrição |
+|----------|-----------|
+| `DB_URL` | JDBC PostgreSQL, ex. `jdbc:postgresql://localhost:5432/escola_aviacao` |
+| `DB_USER` | Utilizador da base de dados |
+| `DB_PASSWORD` | Password da base de dados |
+| `JWT_SECRET` | Segredo JWT (mín. 32 caracteres) |
+| `SEED_ADMIN_PASS` | Password do admin inicial (opcional em dev: `admin123`) |
+| `SEED_STUDENT_PASS` | Password dos alunos criados pelo seed (default: `aluno123`) |
+| `SEED_ENABLED` | `true` para criar contas e dados demo |
+| `SEED_BUSINESS` | `true` para popular cursos/alunos/voos (default: `true`) |
+| `UPLOAD_DIR` | Pasta de documentos (default: `./uploads`) |
 
-## API Web
+### Base de dados
 
-O modulo `web` expoe uma API REST Spring Boot em `http://localhost:8080/api`.
+1. Criar base PostgreSQL vazia.
+2. Executar `web/src/main/resources/db/schema-postgresql.sql`.
+3. Definir `spring.jpa.hibernate.ddl-auto=validate` (já configurado).
 
-Endpoints principais:
+### Arranque
 
-- `POST /api/auth/register` - cria conta `ADMIN` ou `STUDENT`
-- `POST /api/auth/login` - devolve token JWT
-- `GET|POST|PUT|DELETE /api/bo/courses` - cursos
-- `GET|POST|PUT|DELETE /api/bo/students` - alunos
-- `GET|POST|PUT|DELETE /api/bo/instructors` - instrutores
-- `GET|POST|PUT|DELETE /api/bo/aircraft` - aeronaves
-- `GET|POST|PUT|DELETE /api/bo/flights` - voos
-- `GET|POST|PUT|DELETE /api/bo/payments` - pagamentos
-- `GET|POST|PUT|DELETE /api/bo/evaluations` - avaliacoes
-- `GET|POST|PUT|DELETE /api/bo/maintenance` - manutencoes
-
-Documentacao interativa:
-
-```text
-http://localhost:8080/api/swagger
+```bash
+mvn -pl web spring-boot:run
 ```
 
-Exemplo de login:
+Swagger: `http://localhost:8080/api/swagger`
 
-```powershell
-curl -X POST http://localhost:8080/api/auth/login `
-  -H "Content-Type: application/json" `
-  -d "{\"username\":\"admin\",\"password\":\"admin123\"}"
+### Autenticação
+
+- `POST /api/auth/register` — criar conta (primeiro `ADMIN`, depois `STUDENT` com `studentId`)
+- `POST /api/auth/login` — obter JWT
+
+Header: `Authorization: Bearer <token>`
+
+### Endpoints principais
+
+**BackOffice** (`ROLE_ADMIN`): `/api/bo/*`
+
+- CRUD: courses, students, instructors, aircraft, flights, payments, evaluations, maintenance
+- `GET /api/bo/reports/summary` — KPIs agregados
+- `GET /api/bo/payments/summary` — totais de pagamentos
+- `GET/POST/DELETE /api/bo/student-documents/{studentId}` — documentos do aluno
+
+**FrontOffice** (`ROLE_STUDENT`): `/api/fo/*`
+
+- `GET/PUT /api/fo/me` — perfil
+- `GET /api/fo/dashboard` — resumo
+- `GET /api/fo/flights`, `/api/fo/schedule`, `/api/fo/hours`
+- `GET /api/fo/evaluations`
+- `GET /api/fo/payments`, `/api/fo/payments/summary`
+- `GET/POST/DELETE /api/fo/documents` — documentos do aluno autenticado
+
+### Testes
+
+```bash
+mvn -pl web test
 ```
 
-Exemplo de chamada autenticada:
+## Módulo Desktop
 
-```powershell
-curl http://localhost:8080/api/bo/students `
-  -H "Authorization: Bearer <TOKEN>"
+```bash
+mvn -pl desktop exec:java -Dexec.mainClass="pt.ipvc.estg.desktop.DesktopApp"
 ```
 
-## Base de Dados Web
-
-Como a API usa `spring.jpa.hibernate.ddl-auto=validate`, a BD PostgreSQL deve existir antes de arrancar a aplicacao. O schema de referencia esta em:
-
-```text
-web/src/main/resources/db/schema-postgresql.sql
-```
-
-Variaveis obrigatorias para correr o modulo `web` fora dos testes:
-
-```powershell
-$env:DB_URL="jdbc:postgresql://localhost:5432/escola_aviacao"
-$env:DB_USER="escola_user"
-$env:DB_PASSWORD="<password>"
-$env:JWT_SECRET="<segredo-com-pelo-menos-32-caracteres>"
-$env:SEED_ADMIN_PASS="admin123"
-$env:SEED_STUDENT_PASS="aluno123"
-```
+(ou executar a classe principal configurada no IDE)

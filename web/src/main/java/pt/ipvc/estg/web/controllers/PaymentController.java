@@ -11,9 +11,11 @@ import pt.ipvc.estg.entities.Payment;
 import pt.ipvc.estg.entities.Student;
 import pt.ipvc.estg.web.dto.PaymentRequest;
 import pt.ipvc.estg.web.dto.PaymentResponse;
+import pt.ipvc.estg.web.dto.PaymentSummaryResponse;
 import pt.ipvc.estg.web.mappers.PaymentMapper;
 import pt.ipvc.estg.web.repositories.PaymentRepository;
 import pt.ipvc.estg.web.repositories.StudentRepository;
+import pt.ipvc.estg.web.services.PaymentSummaryService;
 import pt.ipvc.estg.web.validation.BusinessRules;
 
 import java.util.List;
@@ -24,18 +26,30 @@ public class PaymentController {
 
     private final PaymentRepository paymentRepository;
     private final StudentRepository studentRepository;
+    private final PaymentSummaryService paymentSummaryService;
 
-    public PaymentController(PaymentRepository paymentRepository, StudentRepository studentRepository) {
+    public PaymentController(PaymentRepository paymentRepository,
+                             StudentRepository studentRepository,
+                             PaymentSummaryService paymentSummaryService) {
         this.paymentRepository = paymentRepository;
         this.studentRepository = studentRepository;
+        this.paymentSummaryService = paymentSummaryService;
+    }
+
+    @GetMapping("/summary")
+    public PaymentSummaryResponse summary(@RequestParam(value = "studentId", required = false) Integer studentId) {
+        if (studentId != null) {
+            return paymentSummaryService.summarizeForStudent(studentId);
+        }
+        return paymentSummaryService.summarizeAll();
     }
 
     @GetMapping
-    public Page<PaymentResponse> getPayments(@RequestParam(required = false) Integer studentId,
-                                             @RequestParam(required = false) String status,
-                                             @RequestParam(defaultValue = "0") int page,
-                                             @RequestParam(defaultValue = "20") int size,
-                                             @RequestParam(required = false) String sort) {
+    public Page<PaymentResponse> getPayments(@RequestParam(value = "studentId", required = false) Integer studentId,
+                                             @RequestParam(value = "status", required = false) String status,
+                                             @RequestParam(value = "page", defaultValue = "0") int page,
+                                             @RequestParam(value = "size", defaultValue = "20") int size,
+                                             @RequestParam(value = "sort", required = false) String sort) {
         PageRequest pageable = PageRequest.of(page, size, buildSort(sort));
         if (studentId != null) {
             List<PaymentResponse> content = paymentRepository.findByStudent_Id(studentId, pageable)

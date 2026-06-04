@@ -31,12 +31,12 @@ public class MaintenanceController {
     }
 
     @GetMapping
-    public Page<MaintenanceResponse> getMaintenance(@RequestParam(required = false) Integer aircraftId,
-                                                    @RequestParam(required = false) String status,
-                                                    @RequestParam(required = false) String priority,
-                                                    @RequestParam(defaultValue = "0") int page,
-                                                    @RequestParam(defaultValue = "20") int size,
-                                                    @RequestParam(required = false) String sort) {
+    public Page<MaintenanceResponse> getMaintenance(@RequestParam(value = "aircraftId", required = false) Integer aircraftId,
+                                                    @RequestParam(value = "status", required = false) String status,
+                                                    @RequestParam(value = "priority", required = false) String priority,
+                                                    @RequestParam(value = "page", defaultValue = "0") int page,
+                                                    @RequestParam(value = "size", defaultValue = "20") int size,
+                                                    @RequestParam(value = "sort", required = false) String sort) {
         PageRequest pageable = PageRequest.of(page, size, buildSort(sort));
         if (aircraftId != null) {
             List<MaintenanceResponse> content = maintenanceRepository.findByAircraft_Id(aircraftId, pageable)

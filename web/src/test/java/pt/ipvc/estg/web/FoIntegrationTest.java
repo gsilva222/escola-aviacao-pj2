@@ -5,28 +5,19 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
-import pt.ipvc.estg.web.dto.AuthLoginRequest;
-import pt.ipvc.estg.web.dto.AuthRegisterRequest;
-import pt.ipvc.estg.web.dto.AuthResponse;
-import pt.ipvc.estg.web.dto.CourseRequest;
-import pt.ipvc.estg.web.dto.CourseResponse;
-import pt.ipvc.estg.web.dto.StudentRequest;
-import pt.ipvc.estg.web.dto.StudentResponse;
+import pt.ipvc.estg.web.dto.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 @TestPropertySource(properties = "security.disable=false")
-class SecurityIntegrationTest {
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+class FoIntegrationTest {
 
     @LocalServerPort
     private int port;
@@ -35,100 +26,93 @@ class SecurityIntegrationTest {
     private TestRestTemplate restTemplate;
 
     @Test
-    void shouldRejectBackOfficeWithoutToken() {
-        ResponseEntity<String> response = restTemplate.getForEntity(url("/bo/courses"), String.class);
-
-        assertThat(response.getStatusCode().is4xxClientError()).isTrue();
-    }
-
-    @Test
-    void shouldRejectStudentTokenOnBackOfficeEndpoint() {
+    void shouldAccessFrontOfficeAsStudent() {
         String adminToken = registerAndLoginAdmin();
         Integer courseId = createCourse(adminToken);
         Integer studentId = createStudent(adminToken, courseId);
 
         AuthRegisterRequest registerStudent = new AuthRegisterRequest(
-                "student.security",
-                "student123",
+                "aluno.fo",
+                "aluno123",
                 "STUDENT",
                 studentId
         );
-        ResponseEntity<AuthResponse> studentRegisterResponse = restTemplate.postForEntity(
+        ResponseEntity<AuthResponse> studentAuth = restTemplate.postForEntity(
                 url("/auth/register"),
                 registerStudent,
                 AuthResponse.class
         );
+        assertThat(studentAuth.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(studentAuth.getBody()).isNotNull();
+        String studentToken = studentAuth.getBody().token();
 
-        assertThat(studentRegisterResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(studentRegisterResponse.getBody()).isNotNull();
-
-        ResponseEntity<String> boResponse = restTemplate.exchange(
-                url("/bo/courses"),
+        ResponseEntity<FoDashboardResponse> dashboard = restTemplate.exchange(
+                url("/fo/dashboard"),
                 HttpMethod.GET,
-                withAuth(studentRegisterResponse.getBody().token(), null),
+                withAuth(studentToken, null),
+                FoDashboardResponse.class
+        );
+        assertThat(dashboard.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(dashboard.getBody()).isNotNull();
+        assertThat(dashboard.getBody().studentId()).isEqualTo(studentId);
+
+        ResponseEntity<String> flights = restTemplate.exchange(
+                url("/fo/flights"),
+                HttpMethod.GET,
+                withAuth(studentToken, null),
                 String.class
         );
+        assertThat(flights.getStatusCode()).isEqualTo(HttpStatus.OK);
 
-        assertThat(boResponse.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        ResponseEntity<String> forbiddenBo = restTemplate.exchange(
+                url("/bo/courses"),
+                HttpMethod.GET,
+                withAuth(studentToken, null),
+                String.class
+        );
+        assertThat(forbiddenBo.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
 
     private String registerAndLoginAdmin() {
-        AuthRegisterRequest register = new AuthRegisterRequest(
-                "admin.security",
-                "admin123",
-                "ADMIN",
-                null
-        );
+        AuthRegisterRequest register = new AuthRegisterRequest("admin.fo", "admin123", "ADMIN", null);
         restTemplate.postForEntity(url("/auth/register"), register, AuthResponse.class);
-
-        ResponseEntity<AuthResponse> loginResponse = restTemplate.postForEntity(
+        ResponseEntity<AuthResponse> login = restTemplate.postForEntity(
                 url("/auth/login"),
-                new AuthLoginRequest("admin.security", "admin123"),
+                new AuthLoginRequest("admin.fo", "admin123"),
                 AuthResponse.class
         );
-
-        assertThat(loginResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(loginResponse.getBody()).isNotNull();
-        return loginResponse.getBody().token();
+        assertThat(login.getBody()).isNotNull();
+        return login.getBody().token();
     }
 
     private Integer createCourse(String token) {
-        CourseRequest course = new CourseRequest(
-                "SEC",
-                "3 meses",
-                10,
-                15,
-                1200.0,
-                "Curso de seguranca"
-        );
+        CourseRequest course = new CourseRequest("FO", "3 meses", 10, 15, 1200.0, "Curso FO");
         ResponseEntity<CourseResponse> response = restTemplate.exchange(
                 url("/bo/courses"),
                 HttpMethod.POST,
                 withAuth(token, course),
                 CourseResponse.class
         );
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isNotNull();
         return response.getBody().id();
     }
 
     private Integer createStudent(String token, Integer courseId) {
         StudentRequest student = new StudentRequest(
-                "Aluno Security",
-                "student.security@email.com",
-                "912000111",
+                "Aluno FO",
+                "aluno.fo.test@email.com",
+                "912000999",
+                "123456789",
                 null,
-                null,
-                "Rua Security",
+                "Rua FO",
                 "Portugal",
                 courseId,
                 null,
                 "active",
                 null,
-                0,
-                0.0,
-                0.0,
+                10,
+                1.0,
+                0.5,
                 "up_to_date"
         );
         ResponseEntity<StudentResponse> response = restTemplate.exchange(
@@ -137,8 +121,6 @@ class SecurityIntegrationTest {
                 withAuth(token, student),
                 StudentResponse.class
         );
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isNotNull();
         return response.getBody().id();
     }

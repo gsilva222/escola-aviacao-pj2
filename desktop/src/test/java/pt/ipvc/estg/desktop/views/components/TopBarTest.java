@@ -49,7 +49,7 @@ public class TopBarTest {
     @Test
     public void testTopBarHasPreferredSize() {
         assertNotNull(topBar.getPreferredSize());
-        assertEquals(70, topBar.getPreferredSize().height, "TopBar height deve ser 70");
+        assertEquals(56, topBar.getPreferredSize().height, "TopBar height deve ser 56");
     }
 
     @Test

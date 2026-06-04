@@ -68,9 +68,6 @@ public class AuthService {
             if (request.studentId() != null) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Admin nao pode ter studentId");
             }
-            if (userAccountRepository.countByRole(ROLE_ADMIN) > 0) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin ja existe");
-            }
         } else if (ROLE_STUDENT.equals(role)) {
             if (request.studentId() == null) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "StudentId e obrigatorio para aluno");

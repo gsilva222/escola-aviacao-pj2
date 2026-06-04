@@ -37,11 +37,11 @@ public class EvaluationController {
     }
 
     @GetMapping
-    public Page<EvaluationResponse> getEvaluations(@RequestParam(required = false) Integer studentId,
-                                                   @RequestParam(required = false) String status,
-                                                   @RequestParam(defaultValue = "0") int page,
-                                                   @RequestParam(defaultValue = "20") int size,
-                                                   @RequestParam(required = false) String sort) {
+    public Page<EvaluationResponse> getEvaluations(@RequestParam(value = "studentId", required = false) Integer studentId,
+                                                   @RequestParam(value = "status", required = false) String status,
+                                                   @RequestParam(value = "page", defaultValue = "0") int page,
+                                                   @RequestParam(value = "size", defaultValue = "20") int size,
+                                                   @RequestParam(value = "sort", required = false) String sort) {
         PageRequest pageable = PageRequest.of(page, size, buildSort(sort));
         if (studentId != null) {
             List<EvaluationResponse> content = evaluationRepository.findByStudent_Id(studentId, pageable)

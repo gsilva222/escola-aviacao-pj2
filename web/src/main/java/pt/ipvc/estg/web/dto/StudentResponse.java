@@ -13,6 +13,7 @@ public record StudentResponse(
         String nationality,
         Integer courseId,
         String courseName,
+        Integer instructorId,
         String status,
         LocalDate enrollmentDate,
         Integer progress,

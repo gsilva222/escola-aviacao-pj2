@@ -35,6 +35,8 @@ public record StudentRequest(
         @NotNull(message = "CourseId e obrigatorio")
         @Positive(message = "CourseId deve ser positivo")
         Integer courseId,
+        @Positive(message = "InstructorId deve ser positivo")
+        Integer instructorId,
         @Pattern(regexp = "active|suspended|completed", message = "Status deve ser active, suspended ou completed")
         @Size(max = 20, message = "Status deve ter no maximo 20 caracteres")
         String status,

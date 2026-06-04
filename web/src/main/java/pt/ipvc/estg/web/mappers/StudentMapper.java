@@ -18,8 +18,10 @@ public final class StudentMapper {
             courseName = student.getCourse().getName();
         }
 
+        Integer instructorId = null;
         String instructorName = null;
         if (student.getInstructor() != null) {
+            instructorId = student.getInstructor().getId();
             instructorName = student.getInstructor().getName();
         }
 
@@ -34,6 +36,7 @@ public final class StudentMapper {
                 student.getNationality(),
                 courseId,
                 courseName,
+                instructorId,
                 student.getStatus(),
                 student.getEnrollmentDate(),
                 student.getProgress(),

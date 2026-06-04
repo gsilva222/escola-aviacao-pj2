@@ -39,9 +39,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             Claims claims = jwtService.parseToken(token);
             String username = claims.getSubject();
             String role = claims.get("role", String.class);
+            Integer studentId = extractStudentId(claims);
             if (username != null && role != null) {
+                AuthenticatedUser principal = new AuthenticatedUser(username, role, studentId);
                 var auth = new UsernamePasswordAuthenticationToken(
-                        username,
+                        principal,
                         null,
                         List.of(new SimpleGrantedAuthority("ROLE_" + role))
                 );
@@ -52,5 +54,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private Integer extractStudentId(Claims claims) {
+        Object raw = claims.get("studentId");
+        if (raw instanceof Number number) {
+            return number.intValue();
+        }
+        return null;
     }
 }

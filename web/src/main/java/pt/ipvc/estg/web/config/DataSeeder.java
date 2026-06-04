@@ -3,6 +3,7 @@ package pt.ipvc.estg.web.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import pt.ipvc.estg.entities.Student;
 import pt.ipvc.estg.entities.UserAccount;
@@ -13,6 +14,7 @@ import pt.ipvc.estg.web.services.AuthService;
 import java.util.List;
 
 @Component
+@Order(2)
 public class DataSeeder implements CommandLineRunner {
 
     private final UserAccountRepository userAccountRepository;

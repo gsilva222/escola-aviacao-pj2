@@ -11,4 +11,6 @@ public interface PaymentRepository extends JpaRepository<Payment, Integer> {
     List<Payment> findByStudent_Id(Integer studentId, Pageable pageable);
     List<Payment> findByStatus(String status);
     List<Payment> findByStatus(String status, Pageable pageable);
+    List<Payment> findByStudent_IdAndStatus(Integer studentId, String status);
+    long countByStatus(String status);
 }

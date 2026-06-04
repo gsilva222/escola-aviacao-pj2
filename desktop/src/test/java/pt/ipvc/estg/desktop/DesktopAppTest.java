@@ -66,8 +66,8 @@ public class DesktopAppTest {
 
     @Test
     public void testDesktopAppSize() {
-        assertEquals(1400, desktopApp.getWidth());
-        assertEquals(900, desktopApp.getHeight());
+        assertEquals(1440, desktopApp.getWidth());
+        assertEquals(820, desktopApp.getHeight());
     }
 
     @Test

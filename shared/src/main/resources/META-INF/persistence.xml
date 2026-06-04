@@ -13,6 +13,7 @@
         <class>pt.ipvc.estg.entities.Payment</class>
         <class>pt.ipvc.estg.entities.Maintenance</class>
         <class>pt.ipvc.estg.entities.UserAccount</class>
+        <class>pt.ipvc.estg.entities.StudentDocument</class>
         
         <properties>
             <!-- Configuração do servidor PostgreSQL -->

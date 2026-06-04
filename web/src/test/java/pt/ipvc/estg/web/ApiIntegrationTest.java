@@ -199,7 +199,8 @@ public class ApiIntegrationTest {
                 "/bo/flights",
                 "/bo/payments",
                 "/bo/evaluations",
-                "/bo/maintenance"
+                "/bo/maintenance",
+                "/bo/reports/summary"
         };
 
         for (String path : paths) {
@@ -210,7 +211,11 @@ public class ApiIntegrationTest {
                     String.class
             );
             assertThat(response.getStatusCode()).as(path).isEqualTo(HttpStatus.OK);
-            assertThat(response.getBody()).as(path).contains("content");
+            if (path.contains("/reports/")) {
+                assertThat(response.getBody()).as(path).contains("totalStudents");
+            } else {
+                assertThat(response.getBody()).as(path).contains("content");
+            }
         }
     }
 
@@ -228,6 +233,7 @@ public class ApiIntegrationTest {
                 "Rua X",
                 "Portugal",
                 courseId,
+                null,
                 "active",
                 null,
                 50,
@@ -407,6 +413,7 @@ public class ApiIntegrationTest {
                                 "Rua B",
                                 "Portugal",
                                 courseId,
+                                null,
                                 "active",
                                 null,
                                 5,
