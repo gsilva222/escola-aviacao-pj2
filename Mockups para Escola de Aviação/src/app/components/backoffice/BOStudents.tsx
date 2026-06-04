@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { Search, Plus, Filter, ChevronRight, Download } from "lucide-react";
-import { mockStudents } from "../../data/mockData";
+import { getCourses, getStudents, CourseDTO, StudentDTO } from "../../data/api";
 
 const STATUS_MAP: Record<string, { label: string; bg: string; color: string }> = {
   active: { label: "Ativo", bg: "#DCFCE7", color: "#16A34A" },
@@ -21,21 +21,70 @@ export function BOStudents() {
   const [search, setSearch] = useState("");
   const [courseFilter, setCourseFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [students, setStudents] = useState<StudentDTO[]>([]);
+  const [courses, setCourses] = useState<CourseDTO[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filtered = mockStudents.filter(s => {
-    const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.email.toLowerCase().includes(search.toLowerCase());
-    const matchCourse = courseFilter === "all" || s.courseId === courseFilter;
-    const matchStatus = statusFilter === "all" || s.status === statusFilter;
-    return matchSearch && matchCourse && matchStatus;
-  });
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError(null);
+
+    Promise.all([getStudents(), getCourses()])
+      .then(([studentsData, coursesData]) => {
+        if (!active) return;
+        setStudents(studentsData);
+        setCourses(coursesData);
+      })
+      .catch((err: Error) => {
+        if (!active) return;
+        setError(err.message || "Erro ao carregar dados");
+      })
+      .finally(() => {
+        if (!active) return;
+        setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const filtered = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return students.filter(s => {
+      const matchSearch = !query ||
+        s.name.toLowerCase().includes(query) ||
+        s.email.toLowerCase().includes(query);
+      const matchCourse = courseFilter === "all" || String(s.courseId ?? "") === courseFilter;
+      const matchStatus = statusFilter === "all" || s.status === statusFilter;
+      return matchSearch && matchCourse && matchStatus;
+    });
+  }, [students, search, courseFilter, statusFilter]);
+
+  const activeCount = students.filter(s => s.status === "active").length;
+  const formatMonthYear = (value?: string | null) => {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+    return date.toLocaleDateString("pt-PT", { month: "short", year: "numeric" });
+  };
+
+  const initials = (name?: string | null) => {
+    if (!name) return "--";
+    const parts = name.trim().split(" ").filter(Boolean);
+    const first = parts[0]?.charAt(0) ?? "";
+    const second = parts[1]?.charAt(0) ?? parts[0]?.charAt(1) ?? "";
+    return `${first}${second}`.toUpperCase();
+  };
 
   return (
     <div className="p-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <p className="text-sm" style={{ color: "#64748B" }}>{mockStudents.length} alunos registados · {mockStudents.filter(s => s.status === "active").length} ativos</p>
+          <p className="text-sm" style={{ color: "#64748B" }}>{students.length} alunos registados · {activeCount} ativos</p>
         </div>
         <div className="flex gap-3">
           <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm transition-colors hover:bg-gray-50" style={{ border: "1.5px solid #E2E8F0", color: "#64748B" }}>
@@ -68,10 +117,9 @@ export function BOStudents() {
           style={{ background: "#F8FAFC", border: "1.5px solid #E2E8F0", color: "#374151" }}
         >
           <option value="all">Todos os Cursos</option>
-          <option value="ppl">PPL – Piloto Privado</option>
-          <option value="cpl">CPL – Piloto Comercial</option>
-          <option value="ir">IR – Instrumentos</option>
-          <option value="atpl">ATPL – Transporte Aéreo</option>
+          {courses.map(c => (
+            <option key={c.id} value={String(c.id)}>{c.name}</option>
+          ))}
         </select>
         <select
           value={statusFilter}
@@ -90,6 +138,13 @@ export function BOStudents() {
         </button>
       </div>
 
+      {loading && (
+        <div className="text-sm mb-4" style={{ color: "#64748B" }}>A carregar alunos...</div>
+      )}
+      {error && (
+        <div className="text-sm mb-4" style={{ color: "#DC2626" }}>{error}</div>
+      )}
+
       {/* Table */}
       <div className="bg-white rounded-2xl overflow-hidden" style={{ border: "1px solid #E2E8F0" }}>
         <table className="w-full">
@@ -102,8 +157,9 @@ export function BOStudents() {
           </thead>
           <tbody>
             {filtered.map((student, i) => {
-              const st = STATUS_MAP[student.status];
-              const pm = PAYMENT_MAP[student.payments];
+              const st = STATUS_MAP[student.status ?? "inactive"] ?? STATUS_MAP.inactive;
+              const paymentKey = student.paymentStatus ?? "pending";
+              const pm = PAYMENT_MAP[paymentKey] ?? PAYMENT_MAP.pending;
               return (
                 <tr
                   key={student.id}
@@ -114,7 +170,7 @@ export function BOStudents() {
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm text-white flex-shrink-0" style={{ background: "#1565C0", fontWeight: 700 }}>
-                        {student.avatar}
+                        {student.avatar ?? initials(student.name)}
                       </div>
                       <div>
                         <div className="text-sm" style={{ color: "#0F2344", fontWeight: 600 }}>{student.name}</div>
@@ -123,22 +179,22 @@ export function BOStudents() {
                     </div>
                   </td>
                   <td className="px-5 py-4">
-                    <div className="text-sm" style={{ color: "#374151", fontWeight: 500 }}>{student.course}</div>
-                    <div className="text-xs" style={{ color: "#94A3B8" }}>Desde {new Date(student.enrollmentDate).toLocaleDateString("pt-PT", { month: "short", year: "numeric" })}</div>
+                    <div className="text-sm" style={{ color: "#374151", fontWeight: 500 }}>{student.courseName ?? "—"}</div>
+                    <div className="text-xs" style={{ color: "#94A3B8" }}>Desde {formatMonthYear(student.enrollmentDate)}</div>
                   </td>
                   <td className="px-5 py-4">
-                    <div className="text-sm" style={{ color: "#374151" }}>{student.instructor}</div>
+                    <div className="text-sm" style={{ color: "#374151" }}>{student.instructorName ?? "—"}</div>
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-2">
                       <div className="flex-1 h-1.5 rounded-full" style={{ background: "#E2E8F0", minWidth: 80 }}>
-                        <div className="h-1.5 rounded-full" style={{ width: `${student.progress}%`, background: student.progress === 100 ? "#22C55E" : "#1565C0" }} />
+                        <div className="h-1.5 rounded-full" style={{ width: `${student.progress ?? 0}%`, background: student.progress === 100 ? "#22C55E" : "#1565C0" }} />
                       </div>
-                      <span className="text-xs" style={{ color: "#64748B", fontWeight: 500 }}>{student.progress}%</span>
+                      <span className="text-xs" style={{ color: "#64748B", fontWeight: 500 }}>{student.progress ?? 0}%</span>
                     </div>
                   </td>
                   <td className="px-5 py-4">
-                    <span className="text-sm" style={{ color: "#0F2344", fontWeight: 600 }}>{student.flightHours}h</span>
+                    <span className="text-sm" style={{ color: "#0F2344", fontWeight: 600 }}>{student.flightHours ?? 0}h</span>
                   </td>
                   <td className="px-5 py-4">
                     <span className="px-2.5 py-1 rounded-full text-xs" style={{ background: pm.bg, color: pm.color, fontWeight: 600 }}>{pm.label}</span>
@@ -162,7 +218,7 @@ export function BOStudents() {
 
         {/* Pagination */}
         <div className="flex items-center justify-between px-5 py-4" style={{ borderTop: "1px solid #F1F5F9" }}>
-          <span className="text-xs" style={{ color: "#94A3B8" }}>A mostrar {filtered.length} de {mockStudents.length} alunos</span>
+          <span className="text-xs" style={{ color: "#94A3B8" }}>A mostrar {filtered.length} de {students.length} alunos</span>
           <div className="flex gap-1">
             {[1, 2, 3].map(p => (
               <button key={p} className="w-8 h-8 rounded-lg text-sm transition-colors" style={{ background: p === 1 ? "#1565C0" : "transparent", color: p === 1 ? "white" : "#64748B", fontWeight: p === 1 ? 600 : 400 }}>

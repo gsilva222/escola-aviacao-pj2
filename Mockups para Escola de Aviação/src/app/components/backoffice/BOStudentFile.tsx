@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { ArrowLeft, Phone, Mail, MapPin, Calendar, Plane, FileText, CreditCard, Edit2, Download, CheckCircle2 } from "lucide-react";
 import { mockStudents, mockFlights, mockEvaluations, mockPayments } from "../../data/mockData";
+import { getStudent, StudentDTO } from "../../data/api";
 
 const STATUS_MAP: Record<string, { label: string; bg: string; color: string }> = {
   active: { label: "Ativo", bg: "#DCFCE7", color: "#16A34A" },
@@ -15,14 +16,59 @@ export function BOStudentFile() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [tab, setTab] = useState(0);
+  const [student, setStudent] = useState<StudentDTO | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const student = mockStudents.find(s => s.id === id) || mockStudents[0];
-  const st = STATUS_MAP[student.status];
-  const studentFlights = mockFlights.filter(f => f.studentId === student.id);
-  const studentEvals = mockEvaluations.filter(e => e.studentId === student.id);
-  const studentPayments = mockPayments.filter(p => p.studentId === student.id);
+  useEffect(() => {
+    if (!id) return;
+    let active = true;
+    setLoading(true);
+    setError(null);
 
-  const minHours = student.courseId === "ppl" ? 45 : student.courseId === "cpl" ? 200 : student.courseId === "ir" ? 50 : 500;
+    getStudent(id)
+      .then(data => {
+        if (!active) return;
+        setStudent(data);
+      })
+      .catch((err: Error) => {
+        if (!active) return;
+        setError(err.message || "Erro ao carregar aluno");
+      })
+      .finally(() => {
+        if (!active) return;
+        setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [id]);
+
+  const fallback = mockStudents.find(s => s.id === id) || mockStudents[0];
+  const viewStudent = (student ?? fallback) as StudentDTO & { course?: string; instructor?: string };
+  const studentId = String(viewStudent.id ?? id ?? "");
+  const st = STATUS_MAP[viewStudent.status ?? "active"] ?? STATUS_MAP.active;
+  const studentFlights = mockFlights.filter(f => f.studentId === studentId);
+  const studentEvals = mockEvaluations.filter(e => e.studentId === studentId);
+  const studentPayments = mockPayments.filter(p => p.studentId === studentId);
+  const courseLabel = viewStudent.courseName ?? viewStudent.course ?? "—";
+  const instructorLabel = viewStudent.instructorName ?? viewStudent.instructor ?? "—";
+
+  const minHours = courseLabel.includes("PPL")
+    ? 45
+    : courseLabel.includes("CPL")
+    ? 200
+    : courseLabel.includes("IR")
+    ? 50
+    : 500;
+
+  const formatDate = (value?: string | null) => {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+    return date.toLocaleDateString("pt-PT");
+  };
 
   return (
     <div className="p-8">
@@ -33,19 +79,26 @@ export function BOStudentFile() {
       </button>
 
       {/* Student Header Card */}
+      {loading && (
+        <div className="text-sm mb-4" style={{ color: "#64748B" }}>A carregar aluno...</div>
+      )}
+      {error && (
+        <div className="text-sm mb-4" style={{ color: "#DC2626" }}>{error}</div>
+      )}
+
       <div className="bg-white rounded-2xl p-6 mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-5" style={{ border: "1px solid #E2E8F0" }}>
         <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-2xl text-white flex-shrink-0" style={{ background: "linear-gradient(135deg, #1565C0, #0D47A1)", fontWeight: 800 }}>
-          {student.avatar}
+          {viewStudent.avatar ?? "--"}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-3 mb-2">
-            <h1 className="text-2xl" style={{ color: "#0F2344", fontWeight: 800 }}>{student.name}</h1>
+            <h1 className="text-2xl" style={{ color: "#0F2344", fontWeight: 800 }}>{viewStudent.name}</h1>
             <span className="px-3 py-1 rounded-full text-sm" style={{ background: st.bg, color: st.color, fontWeight: 600 }}>{st.label}</span>
           </div>
-          <p className="text-sm mb-3" style={{ color: "#64748B" }}>{student.course} · Nº Aluno: {100 + parseInt(student.id)}</p>
+          <p className="text-sm mb-3" style={{ color: "#64748B" }}>{courseLabel} · Nº Aluno: {100 + Number(studentId || 0)}</p>
           <div className="flex flex-wrap gap-4 text-sm" style={{ color: "#64748B" }}>
-            <span className="flex items-center gap-1.5"><Mail className="w-4 h-4" />{student.email}</span>
-            <span className="flex items-center gap-1.5"><Phone className="w-4 h-4" />{student.phone}</span>
+            <span className="flex items-center gap-1.5"><Mail className="w-4 h-4" />{viewStudent.email}</span>
+            <span className="flex items-center gap-1.5"><Phone className="w-4 h-4" />{viewStudent.phone ?? "—"}</span>
           </div>
         </div>
         <div className="flex gap-2">
@@ -63,10 +116,10 @@ export function BOStudentFile() {
       {/* Quick Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {[
-          { label: "Horas de Voo", value: `${student.flightHours}h`, sub: `de ${minHours}h mínimas`, color: "#1565C0" },
-          { label: "Progresso Geral", value: `${student.progress}%`, sub: "Progresso do curso", color: "#7C3AED" },
-          { label: "Horas Teóricas", value: `${student.theoreticalHours}h`, sub: "Completadas", color: "#059669" },
-          { label: "Matrícula", value: new Date(student.enrollmentDate).toLocaleDateString("pt-PT", { day: "numeric", month: "short", year: "numeric" }), sub: "Data de início", color: "#D97706" },
+          { label: "Horas de Voo", value: `${viewStudent.flightHours ?? 0}h`, sub: `de ${minHours}h mínimas`, color: "#1565C0" },
+          { label: "Progresso Geral", value: `${viewStudent.progress ?? 0}%`, sub: "Progresso do curso", color: "#7C3AED" },
+          { label: "Horas Teóricas", value: `${viewStudent.theoreticalHours ?? 0}h`, sub: "Completadas", color: "#059669" },
+          { label: "Matrícula", value: formatDate(viewStudent.enrollmentDate), sub: "Data de início", color: "#D97706" },
         ].map(s => (
           <div key={s.label} className="bg-white rounded-xl p-5" style={{ border: "1px solid #E2E8F0" }}>
             <div className="text-2xl mb-1" style={{ color: s.color, fontWeight: 800 }}>{s.value}</div>
@@ -104,13 +157,13 @@ export function BOStudentFile() {
                 <h3 className="text-sm mb-4 uppercase tracking-wider" style={{ color: "#94A3B8", fontWeight: 600 }}>Dados Pessoais</h3>
                 <div className="space-y-4">
                   {[
-                    { label: "Nome Completo", value: student.name },
-                    { label: "Data de Nascimento", value: new Date(student.birthdate).toLocaleDateString("pt-PT") },
-                    { label: "NIF", value: student.nif },
-                    { label: "Nacionalidade", value: student.nationality },
-                    { label: "Morada", value: student.address, icon: MapPin },
-                    { label: "Telefone", value: student.phone, icon: Phone },
-                    { label: "Email", value: student.email, icon: Mail },
+                    { label: "Nome Completo", value: viewStudent.name },
+                    { label: "Data de Nascimento", value: formatDate(viewStudent.birthdate) },
+                    { label: "NIF", value: viewStudent.nif ?? "—" },
+                    { label: "Nacionalidade", value: viewStudent.nationality ?? "—" },
+                    { label: "Morada", value: viewStudent.address ?? "—", icon: MapPin },
+                    { label: "Telefone", value: viewStudent.phone ?? "—", icon: Phone },
+                    { label: "Email", value: viewStudent.email ?? "—", icon: Mail },
                   ].map(f => (
                     <div key={f.label} className="flex items-start gap-3">
                       <div className="flex-1 min-w-0">
@@ -125,10 +178,10 @@ export function BOStudentFile() {
                 <h3 className="text-sm mb-4 uppercase tracking-wider" style={{ color: "#94A3B8", fontWeight: 600 }}>Informação Académica</h3>
                 <div className="space-y-4">
                   {[
-                    { label: "Curso", value: student.course },
-                    { label: "Instrutor Responsável", value: student.instructor },
-                    { label: "Estado", value: STATUS_MAP[student.status].label },
-                    { label: "Data de Matrícula", value: new Date(student.enrollmentDate).toLocaleDateString("pt-PT") },
+                    { label: "Curso", value: courseLabel },
+                    { label: "Instrutor Responsável", value: instructorLabel },
+                    { label: "Estado", value: st.label },
+                    { label: "Data de Matrícula", value: formatDate(viewStudent.enrollmentDate) },
                   ].map(f => (
                     <div key={f.label}>
                       <div className="text-xs mb-0.5" style={{ color: "#94A3B8", fontWeight: 500 }}>{f.label}</div>
@@ -158,17 +211,17 @@ export function BOStudentFile() {
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm" style={{ color: "#374151", fontWeight: 600 }}>Progresso Geral do Curso</span>
-                  <span className="text-sm" style={{ color: "#1565C0", fontWeight: 700 }}>{student.progress}%</span>
+                  <span className="text-sm" style={{ color: "#1565C0", fontWeight: 700 }}>{viewStudent.progress ?? 0}%</span>
                 </div>
                 <div className="w-full h-3 rounded-full" style={{ background: "#E2E8F0" }}>
-                  <div className="h-3 rounded-full transition-all" style={{ width: `${student.progress}%`, background: "linear-gradient(90deg, #1565C0, #42A5F5)" }} />
+                  <div className="h-3 rounded-full transition-all" style={{ width: `${viewStudent.progress ?? 0}%`, background: "linear-gradient(90deg, #1565C0, #42A5F5)" }} />
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {[
-                  { label: "Horas de Voo", current: student.flightHours, total: minHours, color: "#1565C0" },
-                  { label: "Horas Teóricas", current: student.theoreticalHours, total: 100, color: "#7C3AED" },
-                  { label: "Módulos Concluídos", current: Math.round(student.progress / 12.5), total: 8, color: "#059669" },
+                  { label: "Horas de Voo", current: viewStudent.flightHours ?? 0, total: minHours, color: "#1565C0" },
+                  { label: "Horas Teóricas", current: viewStudent.theoreticalHours ?? 0, total: 100, color: "#7C3AED" },
+                  { label: "Módulos Concluídos", current: Math.round((viewStudent.progress ?? 0) / 12.5), total: 8, color: "#059669" },
                   { label: "Avaliações Aprovadas", current: studentEvals.filter(e => e.status === "passed").length, total: studentEvals.length || 5, color: "#D97706" },
                 ].map(item => (
                   <div key={item.label} className="p-5 rounded-xl" style={{ background: "#F8FAFC", border: "1px solid #E2E8F0" }}>

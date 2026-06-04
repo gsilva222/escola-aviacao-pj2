@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -8,6 +9,7 @@ import {
   TrendingUp, ArrowRight, CheckCircle2, Clock, AlertCircle
 } from "lucide-react";
 import { mockDashboardMetrics, mockChartData, mockFlights, mockMaintenance } from "../../data/mockData";
+import { getStudents, StudentDTO } from "../../data/api";
 
 const COLORS = { green: "#22C55E", yellow: "#F59E0B", red: "#EF4444", blue: "#3B82F6" };
 
@@ -29,7 +31,45 @@ function StatCard({ icon: Icon, label, value, sub, color, onClick }: any) {
 
 export function BODashboard() {
   const navigate = useNavigate();
-  const m = mockDashboardMetrics;
+  const [students, setStudents] = useState<StudentDTO[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError(null);
+
+    getStudents()
+      .then(data => {
+        if (!active) return;
+        setStudents(data);
+      })
+      .catch((err: Error) => {
+        if (!active) return;
+        setError(err.message || "Erro ao carregar metricas");
+      })
+      .finally(() => {
+        if (!active) return;
+        setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const metrics = useMemo(() => {
+    const totalStudents = students.length || mockDashboardMetrics.totalStudents;
+    const activeStudents = students.filter(s => s.status === "active").length || mockDashboardMetrics.activeStudents;
+    return {
+      ...mockDashboardMetrics,
+      totalStudents,
+      activeStudents,
+    };
+  }, [students]);
+
+  const m = metrics;
   const todayFlights = mockFlights.filter(f => f.date === "2025-03-15" || f.date === "2025-03-16");
   const ongoing = mockMaintenance.filter(m => m.status === "in_progress" || m.status === "waiting_parts");
 
@@ -52,6 +92,13 @@ export function BODashboard() {
           </div>
         </div>
       </div>
+
+      {loading && (
+        <div className="text-sm mb-4" style={{ color: "#64748B" }}>A carregar metricas...</div>
+      )}
+      {error && (
+        <div className="text-sm mb-4" style={{ color: "#DC2626" }}>{error}</div>
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">

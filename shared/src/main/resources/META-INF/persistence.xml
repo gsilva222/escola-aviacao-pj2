@@ -12,6 +12,7 @@
         <class>pt.ipvc.estg.entities.Evaluation</class>
         <class>pt.ipvc.estg.entities.Payment</class>
         <class>pt.ipvc.estg.entities.Maintenance</class>
+        <class>pt.ipvc.estg.entities.UserAccount</class>
         
         <properties>
             <!-- Configuração do servidor PostgreSQL -->

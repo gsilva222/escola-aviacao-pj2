@@ -103,6 +103,59 @@ public class StudentService {
         
         return studentDAO.update(student);
     }
+
+    public Student atualizarEstudanteCompleto(Integer id, String name, String email,
+                                             String phone, String nif, LocalDate birthdate,
+                                             String address, String nationality, Course course,
+                                             String status, LocalDate enrollmentDate,
+                                             Integer progress, Double flightHours,
+                                             Double theoreticalHours, String paymentStatus) {
+        if (id == null || id <= 0) {
+            throw new IllegalArgumentException("ID deve ser valido");
+        }
+
+        Optional<Student> opt = studentDAO.findById(id);
+        if (opt.isEmpty()) {
+            throw new IllegalArgumentException("Estudante nao encontrado");
+        }
+
+        Student student = opt.get();
+
+        if (name != null && !name.trim().isEmpty()) {
+            student.setName(name);
+            student.setAvatar(generateAvatar(name));
+        }
+
+        if (email != null && !email.trim().isEmpty()) {
+            Optional<Student> existente = studentDAO.findByEmail(email);
+            if (existente.isPresent() && !existente.get().getId().equals(id)) {
+                throw new IllegalArgumentException("Ja existe outro estudante com esse email");
+            }
+            student.setEmail(email);
+        }
+
+        if (phone != null) student.setPhone(phone);
+        if (nif != null) student.setNif(nif);
+        if (birthdate != null) student.setBirthdate(birthdate);
+        if (address != null) student.setAddress(address);
+        if (nationality != null) student.setNationality(nationality);
+        if (course != null) student.setCourse(course);
+        if (status != null) student.setStatus(status);
+        if (enrollmentDate != null) student.setEnrollmentDate(enrollmentDate);
+
+        if (progress != null) {
+            if (progress < 0 || progress > 100) {
+                throw new IllegalArgumentException("Progresso deve estar entre 0-100");
+            }
+            student.setProgress(progress);
+        }
+
+        if (flightHours != null) student.setFlightHours(flightHours);
+        if (theoreticalHours != null) student.setTheoreticalHours(theoreticalHours);
+        if (paymentStatus != null) student.setPaymentStatus(paymentStatus);
+
+        return studentDAO.update(student);
+    }
     
     public void atualizarProgresso(Integer id, Integer progress) {
         if (id == null || id <= 0) {
