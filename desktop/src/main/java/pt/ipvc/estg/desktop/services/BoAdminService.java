@@ -48,6 +48,17 @@ public class BoAdminService {
         }
     }
 
+    public pt.ipvc.estg.desktop.api.dto.BoDashboardResponse getDashboard() {
+        if (!useApi()) {
+            return null;
+        }
+        try {
+            return boApi.getDashboard();
+        } catch (ApiException ex) {
+            throw new RuntimeException("Erro ao carregar dashboard: " + ex.getMessage(), ex);
+        }
+    }
+
     public List<StudentDocumentResponse> listStudentDocuments(Integer studentId) {
         return boApi.listStudentDocuments(studentId);
     }

@@ -1,7 +1,29 @@
-import { api, apiList } from '../../api/client';
+import { api } from '../../api/client';
 import type { BoDashboard } from '../../api/types';
 import { ErrorAlert, KpiCard, Loading, PageHeader } from '../../components/Ui';
 import { useFetch } from '../../hooks/useFetch';
+import { BoCrudPage } from '../../components/BoCrudPage';
+import { profilesConfig } from './boEntityConfigs';
+
+function BarChart({ title, data }: { title: string; data: Record<string, number> }) {
+  const entries = Object.entries(data);
+  const max = Math.max(1, ...entries.map(([, v]) => v));
+  return (
+    <div className="card">
+      <h3>{title}</h3>
+      <div className="bar-chart">
+        {entries.length === 0 && <p className="muted">Sem dados</p>}
+        {entries.map(([label, value]) => (
+          <div className="bar-row" key={label}>
+            <span className="bar-label">{label}</span>
+            <div className="bar-track"><div className="bar-fill" style={{ width: `${(value / max) * 100}%` }} /></div>
+            <span className="bar-value">{value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function BoDashboardPage() {
   const { data, loading, error } = useFetch(() => api<BoDashboard>('/bo/dashboard'), []);
@@ -10,6 +32,12 @@ export function BoDashboardPage() {
   if (error || !data) return <ErrorAlert message={error ?? 'Sem dados'} />;
 
   const r = data.reports;
+  const aircraftData = {
+    Operacionais: r.operationalAircraft,
+    Manutenção: r.maintenanceAircraft,
+    Imobilizadas: r.groundedAircraft,
+  };
+
   return (
     <>
       <PageHeader title="Dashboard" subtitle={`${data.flightsToday} voos hoje`} />
@@ -21,14 +49,8 @@ export function BoDashboardPage() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: 24 }}>
-          <div className="banner-stat">
-            <small>Horas de voo</small>
-            <strong>{data.flightHoursThisMonth.toFixed(1)}h</strong>
-          </div>
-          <div className="banner-stat">
-            <small>Receita</small>
-            <strong>€ {data.revenueThisMonth.toFixed(0)}</strong>
-          </div>
+          <div className="banner-stat"><small>Horas de voo</small><strong>{data.flightHoursThisMonth.toFixed(1)}h</strong></div>
+          <div className="banner-stat"><small>Receita</small><strong>€ {data.revenueThisMonth.toFixed(0)}</strong></div>
         </div>
       </div>
       <div className="grid grid-4" style={{ marginBottom: 16 }}>
@@ -38,29 +60,16 @@ export function BoDashboardPage() {
         <KpiCard label="Pagamentos pendentes" value={r.pendingPayments + r.overduePayments} hint={`€ ${r.totalPendingAmount.toFixed(0)}`} />
       </div>
       <div className="grid grid-2">
-        <div className="card">
-          <h3>Alunos por curso</h3>
-          <ul className="activity-list">
-            {Object.entries(r.studentsByCourse).map(([course, count]) => (
-              <li key={course}>
-                <strong>{course}</strong>
-                <small> · {String(count)} alunos</small>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="card">
-          <h3>Actividade recente</h3>
-          <ul className="activity-list">
-            {data.recentActivity.map((item: BoDashboard['recentActivity'][number], i: number) => (
-              <li key={i}>
-                <strong>{item.title}</strong>
-                <br />
-                <small>{item.subtitle}</small>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <BarChart title="Alunos por curso" data={r.studentsByCourse} />
+        <BarChart title="Estado da frota" data={aircraftData} />
+      </div>
+      <div className="card" style={{ marginTop: 16 }}>
+        <h3>Actividade recente</h3>
+        <ul className="activity-list">
+          {data.recentActivity.map((item, i) => (
+            <li key={i}><strong>{item.title}</strong><br /><small>{item.subtitle}</small></li>
+          ))}
+        </ul>
       </div>
     </>
   );
@@ -73,7 +82,7 @@ export function BoReportsPage() {
   return (
     <>
       <PageHeader title="Relatórios" subtitle="Indicadores globais da escola" />
-      <div className="grid grid-3">
+      <div className="grid grid-3" style={{ marginBottom: 16 }}>
         <KpiCard label="Alunos activos" value={data.activeStudents} />
         <KpiCard label="Alunos suspensos" value={data.suspendedStudents} />
         <KpiCard label="Alunos concluídos" value={data.completedStudents} />
@@ -81,48 +90,11 @@ export function BoReportsPage() {
         <KpiCard label="Manutenções activas" value={data.activeMaintenances} />
         <KpiCard label="Valor pendente" value={`€ ${data.totalPendingAmount.toFixed(0)}`} />
       </div>
+      <BarChart title="Distribuição por curso" data={data.studentsByCourse} />
     </>
   );
 }
 
 export function BoProfilesPage() {
-  const { data, loading, error, reload } = useFetch(() => apiList<{ id: number; nome: string; descricao?: string }>('/bo/profiles'), []);
-  if (loading) return <Loading />;
-  if (error) return <ErrorAlert message={error} />;
-  return (
-    <>
-      <PageHeader title="Perfis" subtitle="Perfis de utilizador do sistema" actions={
-        <button className="btn btn-sm" type="button" onClick={() => reload()}>Actualizar</button>
-      } />
-      <DataTableSimple
-        columns={[
-          { key: 'nome', label: 'Nome' },
-          { key: 'descricao', label: 'Descrição' },
-        ]}
-        rows={data ?? []}
-      />
-    </>
-  );
-}
-
-function DataTableSimple({ columns, rows }: {
-  columns: { key: string; label: string }[];
-  rows: Record<string, unknown>[];
-}) {
-  return (
-    <div className="table-wrap">
-      <table>
-        <thead>
-          <tr>{columns.map((c) => <th key={c.key}>{c.label}</th>)}</tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={String(row.id)}>
-              {columns.map((c) => <td key={c.key}>{String(row[c.key] ?? '—')}</td>)}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
+  return <BoCrudPage config={profilesConfig} />;
 }

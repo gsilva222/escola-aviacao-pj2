@@ -89,7 +89,7 @@ class DesktopApiIntegrationTest {
 
         ResponseEntity<AuthResponse> studentAuth = restTemplate.postForEntity(
                 apiUrl("/auth/register"),
-                new AuthRegisterRequest("desktop.student", "student123", "STUDENT", studentId),
+                new AuthRegisterRequest("desktop.student", "student123", "STUDENT", studentId, null),
                 AuthResponse.class);
         assertEquals(HttpStatus.OK, studentAuth.getStatusCode());
 
@@ -109,7 +109,7 @@ class DesktopApiIntegrationTest {
     private String registerAdmin(String username, String password) {
         ResponseEntity<AuthResponse> register = restTemplate.postForEntity(
                 apiUrl("/auth/register"),
-                new AuthRegisterRequest(username, password, "ADMIN", null),
+                new AuthRegisterRequest(username, password, "ADMIN", null, "Administrador"),
                 AuthResponse.class);
         assertTrue(register.getStatusCode() == HttpStatus.OK || register.getStatusCode() == HttpStatus.CONFLICT);
 

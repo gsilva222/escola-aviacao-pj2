@@ -40,8 +40,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String username = claims.getSubject();
             String role = claims.get("role", String.class);
             Integer studentId = extractStudentId(claims);
+            String staffProfile = claims.get("staffProfile", String.class);
             if (username != null && role != null) {
-                AuthenticatedUser principal = new AuthenticatedUser(username, role, studentId);
+                AuthenticatedUser principal = new AuthenticatedUser(username, role, studentId, staffProfile);
                 var auth = new UsernamePasswordAuthenticationToken(
                         principal,
                         null,

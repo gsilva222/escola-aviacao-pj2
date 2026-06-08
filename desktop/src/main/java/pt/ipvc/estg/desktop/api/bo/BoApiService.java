@@ -425,6 +425,10 @@ public class BoApiService {
         return client.get("/bo/reports/summary", ReportsSummaryResponse.class);
     }
 
+    public BoDashboardResponse getDashboard() {
+        return client.get("/bo/dashboard", BoDashboardResponse.class);
+    }
+
     // --- Student documents ---
 
     public List<StudentDocumentResponse> listStudentDocuments(Integer studentId) {

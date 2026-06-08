@@ -25,7 +25,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
-@TestPropertySource(properties = "security.disable=false")
+@TestPropertySource(properties = {
+        "security.disable=false",
+        "auth.allow-public-admin-register=true"
+})
 class SecurityIntegrationTest {
 
     @LocalServerPort
@@ -51,7 +54,8 @@ class SecurityIntegrationTest {
                 "student.security",
                 "student123",
                 "STUDENT",
-                studentId
+                studentId,
+                null
         );
         ResponseEntity<AuthResponse> studentRegisterResponse = restTemplate.postForEntity(
                 url("/auth/register"),
@@ -77,6 +81,7 @@ class SecurityIntegrationTest {
                 "admin.security",
                 "admin123",
                 "ADMIN",
+                null,
                 null
         );
         restTemplate.postForEntity(url("/auth/register"), register, AuthResponse.class);

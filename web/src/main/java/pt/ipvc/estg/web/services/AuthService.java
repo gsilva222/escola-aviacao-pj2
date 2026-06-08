@@ -65,7 +65,8 @@ public class AuthService {
                     request.username(),
                     passwordEncoder.encode(request.password()),
                     normalizedRole,
-                    request.studentId()
+                    request.studentId(),
+                    request.staffProfile()
             );
             UserAccount created = accountService.save(account);
             return toAuthResponse(created);
@@ -81,7 +82,7 @@ public class AuthService {
     public MeResponse me() {
         var user = SecurityUtils.currentUser()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Nao autenticado"));
-        return new MeResponse(user.username(), user.role(), user.studentId());
+        return new MeResponse(user.username(), user.role(), user.studentId(), user.staffProfile());
     }
 
     public void changePassword(ChangePasswordRequest request) {
@@ -101,8 +102,9 @@ public class AuthService {
 
     private AuthResponse toAuthResponse(UserAccount user) {
         Integer studentId = user.getStudent() != null ? user.getStudent().getId() : null;
-        String token = jwtService.generateToken(user.getUsername(), user.getRole(), studentId);
-        return new AuthResponse(token, user.getUsername(), user.getRole(), studentId);
+        String staffProfile = AccountService.effectiveStaffProfile(user);
+        String token = jwtService.generateToken(user.getUsername(), user.getRole(), studentId, staffProfile);
+        return new AuthResponse(token, user.getUsername(), user.getRole(), studentId, staffProfile);
     }
 }
 

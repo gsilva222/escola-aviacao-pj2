@@ -55,8 +55,10 @@ Abra http://localhost:5173
 ## Endpoints principais
 
 - **Auth:** `POST /auth/login`, `POST /auth/register`, `GET /auth/me`, `POST /auth/change-password`
-- **BackOffice:** `/bo/students`, `/bo/courses`, `/bo/flights`, `/bo/aircraft`, `/bo/instructors`, `/bo/maintenance`, `/bo/evaluations`, `/bo/payments`, `/bo/reports/summary`, `/bo/dashboard`, `/bo/profiles`
-- **FrontOffice (aluno):** `/fo/me`, `/fo/dashboard`, `/fo/flights`, `/fo/schedule`, `/fo/hours`, `/fo/evaluations`, `/fo/payments`, `/fo/documents`
+- **BackOffice:** CRUD completo + `/bo/dashboard`, `/bo/users`, `/bo/profiles`, documentos de aluno
+- **FrontOffice (aluno):** área completa com perfil e documentos
+- **Frontend:** React com CRUD, gráficos, menus por perfil staff, paginação
+- **CI:** GitHub Actions (`.github/workflows/ci.yml`)
 
 ## Segurança
 

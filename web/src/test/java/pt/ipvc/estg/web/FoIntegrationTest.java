@@ -15,7 +15,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
-@TestPropertySource(properties = "security.disable=false")
+@TestPropertySource(properties = {
+        "security.disable=false",
+        "auth.allow-public-admin-register=true"
+})
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class FoIntegrationTest {
 
@@ -35,7 +38,8 @@ class FoIntegrationTest {
                 "aluno.fo",
                 "aluno123",
                 "STUDENT",
-                studentId
+                studentId,
+                null
         );
         ResponseEntity<AuthResponse> studentAuth = restTemplate.postForEntity(
                 url("/auth/register"),
@@ -74,7 +78,7 @@ class FoIntegrationTest {
     }
 
     private String registerAndLoginAdmin() {
-        AuthRegisterRequest register = new AuthRegisterRequest("admin.fo", "admin123", "ADMIN", null);
+        AuthRegisterRequest register = new AuthRegisterRequest("admin.fo", "admin123", "ADMIN", null, null);
         restTemplate.postForEntity(url("/auth/register"), register, AuthResponse.class);
         ResponseEntity<AuthResponse> login = restTemplate.postForEntity(
                 url("/auth/login"),

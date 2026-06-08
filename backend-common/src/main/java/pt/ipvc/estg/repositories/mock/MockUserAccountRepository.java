@@ -4,10 +4,16 @@ import pt.ipvc.estg.dal.mock.UserAccountDAOMock;
 import pt.ipvc.estg.entities.UserAccount;
 import pt.ipvc.estg.repositories.UserAccountRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 public class MockUserAccountRepository implements UserAccountRepository {
     private final UserAccountDAOMock delegate = new UserAccountDAOMock();
+
+    @Override
+    public Optional<UserAccount> findById(Integer id) {
+        return delegate.findById(id);
+    }
 
     @Override
     public Optional<UserAccount> findByUsername(String username) {
@@ -20,7 +26,13 @@ public class MockUserAccountRepository implements UserAccountRepository {
     }
 
     @Override
+    public List<UserAccount> findAll() {
+        return delegate.findAll();
+    }
+
+    @Override
     public UserAccount save(UserAccount account) {
         return delegate.save(account);
     }
 }
+

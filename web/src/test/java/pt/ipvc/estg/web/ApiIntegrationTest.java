@@ -352,6 +352,7 @@ public class ApiIntegrationTest {
                                 "admin",
                                 "admin123",
                                 "ADMIN",
+                                null,
                                 null
                 );
 

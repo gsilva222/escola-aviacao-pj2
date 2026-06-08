@@ -6,6 +6,7 @@ import org.knowm.xchart.XYChartBuilder;
 import org.knowm.xchart.XYSeries;
 
 import pt.ipvc.estg.desktop.api.SessionContext;
+import pt.ipvc.estg.desktop.api.dto.BoDashboardResponse;
 import pt.ipvc.estg.desktop.api.dto.ReportsSummaryResponse;
 import pt.ipvc.estg.desktop.services.BoAdminService;
 
@@ -97,6 +98,23 @@ public class BODashboard extends JPanel {
             @Override
             protected Void doInBackground() {
                 try {
+                    if (adminService.useApi()) {
+                        BoDashboardResponse dashboard = adminService.getDashboard();
+                        if (dashboard != null) {
+                            summary = dashboard.reports();
+                            flightsToday = dashboard.flightsToday();
+                            completedToday = dashboard.completedFlightsToday();
+                            scheduledToday = dashboard.scheduledFlightsToday();
+                            monthHours = dashboard.flightHoursThisMonth();
+                            monthRevenue = dashboard.revenueThisMonth();
+                            activities = dashboard.recentActivity().stream()
+                                    .map(a -> new BoAdminService.ActivityItem(
+                                            a.icon(), a.title(), a.subtitle(), a.type()))
+                                    .toList();
+                            byCourse = adminService.studentsByCourse(summary);
+                            return null;
+                        }
+                    }
                     summary = adminService.getReportsSummary();
                     flightsToday = adminService.flightsToday();
                     completedToday = adminService.completedFlightsToday();

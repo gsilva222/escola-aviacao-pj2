@@ -25,7 +25,7 @@ public class JwtService {
         this.expirationMinutes = expirationMinutes;
     }
 
-    public String generateToken(String username, String role, Integer studentId) {
+    public String generateToken(String username, String role, Integer studentId, String staffProfile) {
         Instant now = Instant.now();
         Instant exp = now.plusSeconds(expirationMinutes * 60);
 
@@ -33,6 +33,9 @@ public class JwtService {
         claims.put("role", role);
         if (studentId != null) {
             claims.put("studentId", studentId);
+        }
+        if (staffProfile != null && !staffProfile.isBlank()) {
+            claims.put("staffProfile", staffProfile);
         }
 
         return Jwts.builder()

@@ -70,6 +70,7 @@ public class DataSeeder implements CommandLineRunner {
         admin.setPasswordHash(passwordEncoder.encode(adminPassword));
         admin.setRole(AccountService.ROLE_ADMIN);
         admin.setActive(true);
+        admin.setStaffProfile(AccountService.DEFAULT_STAFF_PROFILE);
         userAccountRepository.save(admin);
     }
 

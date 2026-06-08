@@ -40,6 +40,7 @@ export interface AuthResponse {
   username: string;
   role: 'ADMIN' | 'STUDENT';
   studentId: number | null;
+  staffProfile?: string | null;
 }
 
 export class ApiError extends Error {

@@ -15,7 +15,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
-@TestPropertySource(properties = "security.disable=false")
+@TestPropertySource(properties = {
+        "security.disable=false",
+        "auth.allow-public-admin-register=true"
+})
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class WebSmokeIntegrationTest {
 
@@ -33,7 +36,7 @@ class WebSmokeIntegrationTest {
         Integer studentId = createStudent(adminToken, courseId, instructorId);
 
         AuthRegisterRequest registerStudent = new AuthRegisterRequest(
-                "smoke.student", "student123", "STUDENT", studentId);
+                "smoke.student", "student123", "STUDENT", studentId, null);
         ResponseEntity<AuthResponse> studentAuth = restTemplate.postForEntity(
                 url("/auth/register"), registerStudent, AuthResponse.class);
         assertThat(studentAuth.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -61,7 +64,7 @@ class WebSmokeIntegrationTest {
     private String registerAndLoginAdmin() {
         ResponseEntity<AuthResponse> register = restTemplate.postForEntity(
                 url("/auth/register"),
-                new AuthRegisterRequest("admin.smoke", "admin123", "ADMIN", null),
+                new AuthRegisterRequest("admin.smoke", "admin123", "ADMIN", null, "Administrador"),
                 AuthResponse.class);
         assertThat(register.getStatusCode()).isIn(HttpStatus.OK, HttpStatus.CONFLICT);
         if (register.getStatusCode() == HttpStatus.OK && register.getBody() != null) {

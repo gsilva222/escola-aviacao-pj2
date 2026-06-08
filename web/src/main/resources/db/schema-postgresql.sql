@@ -125,6 +125,7 @@ CREATE TABLE IF NOT EXISTS user_account (
     password_hash VARCHAR(255) NOT NULL,
     role VARCHAR(20) NOT NULL CHECK (role IN ('ADMIN', 'STUDENT')),
     active BOOLEAN NOT NULL DEFAULT TRUE,
+    staff_profile VARCHAR(100),
     id_student INTEGER UNIQUE REFERENCES student(id_student) ON DELETE CASCADE
 );
 

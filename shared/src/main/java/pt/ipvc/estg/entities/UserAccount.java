@@ -27,6 +27,9 @@ public class UserAccount {
     @JoinColumn(name = "id_student")
     private Student student;
 
+    @Column(name = "staff_profile", length = 100)
+    private String staffProfile;
+
     public UserAccount() {}
 
     public UserAccount(String username, String passwordHash, String role) {
@@ -53,4 +56,7 @@ public class UserAccount {
 
     public Student getStudent() { return student; }
     public void setStudent(Student student) { this.student = student; }
+
+    public String getStaffProfile() { return staffProfile; }
+    public void setStaffProfile(String staffProfile) { this.staffProfile = staffProfile; }
 }
