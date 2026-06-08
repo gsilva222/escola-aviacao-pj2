@@ -1,8 +1,11 @@
 package pt.ipvc.estg.desktop.views.panels;
 
 import pt.ipvc.estg.desktop.controllers.CourseController;
+import pt.ipvc.estg.desktop.controllers.InstructorController;
 import pt.ipvc.estg.desktop.controllers.StudentController;
+import pt.ipvc.estg.desktop.util.PdfExportHelper;
 import pt.ipvc.estg.entities.Course;
+import pt.ipvc.estg.entities.Instructor;
 import pt.ipvc.estg.entities.Student;
 
 import javax.swing.*;
@@ -31,6 +34,7 @@ public class BOStudents extends JPanel {
 
     private final StudentController studentController;
     private final CourseController courseController;
+    private final InstructorController instructorController;
 
     private JTextField searchField;
     private JComboBox<String> courseFilter;
@@ -46,9 +50,15 @@ public class BOStudents extends JPanel {
     private int currentPage = 0;
     private final int pageSize = 10;
 
+    private String advancedInstructorFilter = "Todos";
+    private String advancedPaymentFilter = "Todos";
+    private Integer advancedProgressMin = null;
+    private Integer advancedProgressMax = null;
+
     public BOStudents() {
         this.studentController = new StudentController();
         this.courseController = new CourseController();
+        this.instructorController = new InstructorController();
         initializeUI();
         loadData();
     }
@@ -152,7 +162,7 @@ public class BOStudents extends JPanel {
 
         JButton moreFilters = new JButton("Mais filtros");
         styleSecondaryButton(moreFilters);
-        moreFilters.addActionListener(e -> JOptionPane.showMessageDialog(this, "Filtros avançados em desenvolvimento."));
+        moreFilters.addActionListener(e -> showAdvancedFiltersDialog());
 
         gbc.gridx = 3;
         gbc.insets = new Insets(0, 0, 0, 0);
@@ -273,7 +283,15 @@ public class BOStudents extends JPanel {
                             || (s.getCourse() != null && s.getCourse().getName().equals(selectedCourse));
                     boolean matchStatus = "Todos os Estados".equals(selectedStatus)
                             || selectedStatus.equals(s.getStatus());
-                    return matchSearch && matchCourse && matchStatus;
+                    boolean matchInstructor = "Todos".equals(advancedInstructorFilter)
+                            || (s.getInstructor() != null && s.getInstructor().getName().equals(advancedInstructorFilter));
+                    boolean matchPayment = "Todos".equals(advancedPaymentFilter)
+                            || advancedPaymentFilter.equals(s.getPaymentStatus());
+                    int progress = s.getProgress() != null ? s.getProgress() : 0;
+                    boolean matchProgressMin = advancedProgressMin == null || progress >= advancedProgressMin;
+                    boolean matchProgressMax = advancedProgressMax == null || progress <= advancedProgressMax;
+                    return matchSearch && matchCourse && matchStatus
+                            && matchInstructor && matchPayment && matchProgressMin && matchProgressMax;
                 })
                 .collect(Collectors.toList());
 
@@ -366,8 +384,68 @@ public class BOStudents extends JPanel {
         }
     }
 
+    private void showAdvancedFiltersDialog() {
+        JComboBox<String> instructorCombo = new JComboBox<>();
+        instructorCombo.addItem("Todos");
+        for (Instructor instructor : instructorController.listarInstrutores()) {
+            instructorCombo.addItem(instructor.getName());
+        }
+        instructorCombo.setSelectedItem(advancedInstructorFilter);
+
+        JComboBox<String> paymentCombo = new JComboBox<>(new String[]{
+                "Todos", "up_to_date", "pending", "overdue"
+        });
+        paymentCombo.setSelectedItem(advancedPaymentFilter);
+
+        JTextField progressMinField = new JTextField(advancedProgressMin != null ? String.valueOf(advancedProgressMin) : "");
+        JTextField progressMaxField = new JTextField(advancedProgressMax != null ? String.valueOf(advancedProgressMax) : "");
+
+        JPanel form = new JPanel(new GridLayout(0, 2, 8, 8));
+        form.add(new JLabel("Instrutor"));
+        form.add(instructorCombo);
+        form.add(new JLabel("Estado de pagamento"));
+        form.add(paymentCombo);
+        form.add(new JLabel("Progresso minimo (%)"));
+        form.add(progressMinField);
+        form.add(new JLabel("Progresso maximo (%)"));
+        form.add(progressMaxField);
+
+        int result = JOptionPane.showConfirmDialog(this, form, "Filtros avancados",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (result == JOptionPane.OK_OPTION) {
+            advancedInstructorFilter = (String) instructorCombo.getSelectedItem();
+            advancedPaymentFilter = (String) paymentCombo.getSelectedItem();
+            advancedProgressMin = parseOptionalInt(progressMinField.getText());
+            advancedProgressMax = parseOptionalInt(progressMaxField.getText());
+            applyFilters();
+        }
+    }
+
+    private Integer parseOptionalInt(String text) {
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+        return Integer.parseInt(text.trim());
+    }
+
     private void exportarPDF() {
-        JOptionPane.showMessageDialog(this, "Exportacao em desenvolvimento.");
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setSelectedFile(new java.io.File("Lista_Alunos_AeroSchool.pdf"));
+        if (fileChooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        try {
+            java.io.File file = fileChooser.getSelectedFile();
+            if (!file.getName().toLowerCase(Locale.ROOT).endsWith(".pdf")) {
+                file = new java.io.File(file.getAbsolutePath() + ".pdf");
+            }
+            PdfExportHelper.exportStudentList(file, filteredStudents);
+            JOptionPane.showMessageDialog(this, "Lista exportada com sucesso.\n" + file.getAbsolutePath(),
+                    "Sucesso", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Erro ao exportar PDF: " + ex.getMessage(),
+                    "Erro", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private JPanel createCardPanel() {

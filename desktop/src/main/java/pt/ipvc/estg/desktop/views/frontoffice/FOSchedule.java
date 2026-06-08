@@ -51,7 +51,7 @@ public class FOSchedule extends JPanel {
 
     private void loadFlights() {
         flights.clear();
-        List<Flight> studentFlights = flightController.obterVoosPorEstudante(student.getId());
+        List<Flight> studentFlights = flightController.obterAgendaEstudante(student.getId());
         if (studentFlights != null) {
             flights.addAll(studentFlights);
         }

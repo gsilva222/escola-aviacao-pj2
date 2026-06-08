@@ -11,9 +11,9 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import pt.ipvc.estg.entities.Student;
 import pt.ipvc.estg.entities.StudentDocument;
+import pt.ipvc.estg.services.StudentDocumentService;
 import pt.ipvc.estg.web.dto.StudentDocumentResponse;
 import pt.ipvc.estg.web.mappers.StudentDocumentMapper;
-import pt.ipvc.estg.web.repositories.StudentDocumentRepository;
 import pt.ipvc.estg.web.services.DocumentStorageService;
 import pt.ipvc.estg.web.services.StudentScopeService;
 
@@ -25,21 +25,21 @@ import java.util.List;
 public class BoStudentDocumentController {
 
     private final StudentScopeService studentScopeService;
-    private final StudentDocumentRepository documentRepository;
+    private final StudentDocumentService documentService;
     private final DocumentStorageService documentStorageService;
 
     public BoStudentDocumentController(StudentScopeService studentScopeService,
-                                       StudentDocumentRepository documentRepository,
+                                       StudentDocumentService documentService,
                                        DocumentStorageService documentStorageService) {
         this.studentScopeService = studentScopeService;
-        this.documentRepository = documentRepository;
+        this.documentService = documentService;
         this.documentStorageService = documentStorageService;
     }
 
     @GetMapping("/{studentId}")
     public List<StudentDocumentResponse> list(@PathVariable("studentId") Integer studentId) {
         studentScopeService.requireStudent(studentId);
-        return documentRepository.findByStudent_IdOrderByUploadedAtDesc(studentId).stream()
+        return documentService.listByStudent(studentId).stream()
                 .map(StudentDocumentMapper::toResponse)
                 .toList();
     }
@@ -55,7 +55,7 @@ public class BoStudentDocumentController {
     @GetMapping("/{studentId}/{documentId}/download")
     public ResponseEntity<Resource> download(@PathVariable("studentId") Integer studentId,
                                              @PathVariable("documentId") Integer documentId) {
-        StudentDocument document = requireDocument(studentId, documentId);
+        StudentDocument document = documentStorageService.requireDocument(studentId, documentId);
         return buildDownloadResponse(document);
     }
 
@@ -63,13 +63,8 @@ public class BoStudentDocumentController {
     @ResponseStatus(HttpStatus.OK)
     public void delete(@PathVariable("studentId") Integer studentId,
                        @PathVariable("documentId") Integer documentId) {
-        StudentDocument document = requireDocument(studentId, documentId);
+        StudentDocument document = documentStorageService.requireDocument(studentId, documentId);
         documentStorageService.deleteDocument(document);
-    }
-
-    private StudentDocument requireDocument(Integer studentId, Integer documentId) {
-        return documentRepository.findByIdAndStudent_Id(documentId, studentId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Documento nao encontrado"));
     }
 
     private ResponseEntity<Resource> buildDownloadResponse(StudentDocument document) {

@@ -1,7 +1,7 @@
 package pt.ipvc.estg.desktop.controllers;
 
 import pt.ipvc.estg.entities.Perfil;
-import pt.ipvc.estg.services.PerfilServiceMock;
+import pt.ipvc.estg.services.PerfilService;
 
 import java.util.List;
 import java.util.Optional;
@@ -11,10 +11,10 @@ import java.util.Optional;
  */
 public class PerfilController {
     
-    private final PerfilServiceMock perfilService;
-    
+    private final PerfilService perfilService;
+
     public PerfilController() {
-        this.perfilService = new PerfilServiceMock();
+        this.perfilService = pt.ipvc.estg.bootstrap.MockServices.getInstance().perfilService();
     }
     
     /**

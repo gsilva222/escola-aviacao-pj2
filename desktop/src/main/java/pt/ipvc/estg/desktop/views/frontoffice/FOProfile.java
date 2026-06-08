@@ -2,6 +2,7 @@ package pt.ipvc.estg.desktop.views.frontoffice;
 
 import pt.ipvc.estg.desktop.controllers.EvaluationController;
 import pt.ipvc.estg.desktop.controllers.FlightController;
+import pt.ipvc.estg.desktop.services.FoStudentService;
 import pt.ipvc.estg.entities.Evaluation;
 import pt.ipvc.estg.entities.Flight;
 import pt.ipvc.estg.entities.Student;
@@ -35,6 +36,7 @@ public class FOProfile extends JPanel {
     private final Student student;
     private final FlightController flightController;
     private final EvaluationController evaluationController;
+    private final FoStudentService foStudentService;
     private final List<Flight> flights = new ArrayList<>();
     private final List<Evaluation> evaluations = new ArrayList<>();
 
@@ -48,6 +50,7 @@ public class FOProfile extends JPanel {
         this.student = student;
         this.flightController = new FlightController();
         this.evaluationController = new EvaluationController();
+        this.foStudentService = new FoStudentService();
         loadData();
         initializeUI();
     }
@@ -470,24 +473,45 @@ public class FOProfile extends JPanel {
     }
 
     private void toggleEditing() {
+        if (editing && foStudentService.useApi()) {
+            try {
+                String phone = fieldValue("Telefone");
+                String address = fieldValue("Morada");
+                String nationality = fieldValue("Nacionalidade");
+                Student updated = foStudentService.updateProfile(phone, address, nationality);
+                student.setPhone(updated.getPhone());
+                student.setAddress(updated.getAddress());
+                student.setNationality(updated.getNationality());
+                JOptionPane.showMessageDialog(this, "Perfil atualizado com sucesso.", "Perfil", JOptionPane.INFORMATION_MESSAGE);
+            } catch (RuntimeException ex) {
+                JOptionPane.showMessageDialog(this, ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+        }
+
         editing = !editing;
-        personalFields.values().forEach(field -> {
-            field.setEditable(editing);
-            field.setBackground(editing ? WHITE : new Color(248, 250, 252));
+        personalFields.forEach((label, field) -> {
+            boolean editable = editing && ("Telefone".equals(label) || "Morada".equals(label) || "Nacionalidade".equals(label));
+            field.setEditable(editable);
+            field.setBackground(editable ? WHITE : new Color(248, 250, 252));
             field.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(editing ? new Color(191, 219, 254) : BORDER, 1),
+                    BorderFactory.createLineBorder(editable ? new Color(191, 219, 254) : BORDER, 1),
                     new EmptyBorder(7, 8, 7, 8)
             ));
         });
 
-        JOptionPane.showMessageDialog(
-                this,
-                editing
-                        ? "Modo de edicao ativado. Alteracoes locais no painel."
-                        : "Modo de edicao desativado.",
-                "Perfil",
-                JOptionPane.INFORMATION_MESSAGE
-        );
+        if (editing) {
+            JOptionPane.showMessageDialog(this, "Edite telefone, morada e nacionalidade. Clique novamente para guardar.", "Perfil", JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+
+    private String fieldValue(String label) {
+        JTextField field = personalFields.get(label);
+        if (field == null) {
+            return null;
+        }
+        String value = field.getText().trim();
+        return value.isEmpty() || "-".equals(value) ? null : value;
     }
 
     private void stylePrimaryButton(JButton button) {

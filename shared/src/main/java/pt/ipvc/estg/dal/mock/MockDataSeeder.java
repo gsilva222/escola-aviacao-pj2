@@ -321,6 +321,39 @@ public class MockDataSeeder {
         
         System.out.println("[SEEDER] ✅ " + maintenanceCount + " Maintenance inicializados");
     }
+
+    /**
+     * Popula UserAccountDAOMock com admin e contas de aluno (modo mock offline).
+     */
+    public static void seedUserAccounts() {
+        UserAccountDAOMock accountDAO = new UserAccountDAOMock();
+        StudentDAOMock studentDAO = new StudentDAOMock();
+
+        if (accountDAO.count() > 0) {
+            return;
+        }
+
+        UserAccount admin = new UserAccount("admin", "mock:admin123", "ADMIN");
+        accountDAO.insert(admin);
+
+        for (Student student : studentDAO.findAll()) {
+            if (student.getEmail() == null || student.getEmail().isBlank()) {
+                continue;
+            }
+            if (accountDAO.findByStudent(student.getId()).isPresent()) {
+                continue;
+            }
+            if (accountDAO.findByUsername(student.getEmail()).isPresent()) {
+                continue;
+            }
+
+            UserAccount account = new UserAccount(student.getEmail(), "mock:aluno123", "STUDENT");
+            account.setStudent(student);
+            accountDAO.insert(account);
+        }
+
+        System.out.println("[SEEDER] ✅ " + accountDAO.count() + " UserAccounts inicializados");
+    }
     
     /**
      * Método principal para fazer seed de TODOS os dados
@@ -331,13 +364,15 @@ public class MockDataSeeder {
         EvaluationDAOMock evaluationDAO = new EvaluationDAOMock();
         PaymentDAOMock paymentDAO = new PaymentDAOMock();
         MaintenanceDAOMock maintenanceDAO = new MaintenanceDAOMock();
+        UserAccountDAOMock accountDAO = new UserAccountDAOMock();
 
         if (seeded
                 && studentDAO.count() > 0
                 && flightDAO.count() > 0
                 && evaluationDAO.count() > 0
                 && paymentDAO.count() > 0
-                && maintenanceDAO.count() > 0) {
+                && maintenanceDAO.count() > 0
+                && accountDAO.count() > 0) {
             seeded = true;
             return;
         }
@@ -357,6 +392,9 @@ public class MockDataSeeder {
         }
         if (maintenanceDAO.count() == 0) {
             seedMaintenance();
+        }
+        if (accountDAO.count() == 0) {
+            seedUserAccounts();
         }
         seeded = true;
         System.out.println("✨ [SEEDER] Seeding completo!\n");

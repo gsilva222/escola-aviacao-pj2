@@ -11,9 +11,9 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import pt.ipvc.estg.entities.Student;
 import pt.ipvc.estg.entities.StudentDocument;
+import pt.ipvc.estg.services.StudentDocumentService;
 import pt.ipvc.estg.web.dto.StudentDocumentResponse;
 import pt.ipvc.estg.web.mappers.StudentDocumentMapper;
-import pt.ipvc.estg.web.repositories.StudentDocumentRepository;
 import pt.ipvc.estg.web.services.DocumentStorageService;
 import pt.ipvc.estg.web.services.StudentScopeService;
 
@@ -25,21 +25,21 @@ import java.util.List;
 public class FoDocumentController {
 
     private final StudentScopeService studentScopeService;
-    private final StudentDocumentRepository documentRepository;
+    private final StudentDocumentService documentService;
     private final DocumentStorageService documentStorageService;
 
     public FoDocumentController(StudentScopeService studentScopeService,
-                                StudentDocumentRepository documentRepository,
+                                StudentDocumentService documentService,
                                 DocumentStorageService documentStorageService) {
         this.studentScopeService = studentScopeService;
-        this.documentRepository = documentRepository;
+        this.documentService = documentService;
         this.documentStorageService = documentStorageService;
     }
 
     @GetMapping
     public List<StudentDocumentResponse> listDocuments() {
         int studentId = studentScopeService.requireCurrentStudent().getId();
-        return documentRepository.findByStudent_IdOrderByUploadedAtDesc(studentId).stream()
+        return documentService.listByStudent(studentId).stream()
                 .map(StudentDocumentMapper::toResponse)
                 .toList();
     }
@@ -48,14 +48,13 @@ public class FoDocumentController {
     public StudentDocumentResponse upload(@RequestPart("file") MultipartFile file,
                                           @RequestParam(required = false) String category) {
         Student student = studentScopeService.requireCurrentStudent();
-        StudentDocument saved = documentStorageService.store(student, file, category);
-        return StudentDocumentMapper.toResponse(saved);
+        return StudentDocumentMapper.toResponse(documentStorageService.store(student, file, category));
     }
 
     @GetMapping("/{id}/download")
     public ResponseEntity<Resource> download(@PathVariable("id") Integer id) {
         int studentId = studentScopeService.requireCurrentStudent().getId();
-        StudentDocument document = requireOwnedDocument(id, studentId);
+        StudentDocument document = documentStorageService.requireDocument(studentId, id);
         return buildDownloadResponse(document);
     }
 
@@ -63,13 +62,8 @@ public class FoDocumentController {
     @ResponseStatus(HttpStatus.OK)
     public void delete(@PathVariable("id") Integer id) {
         int studentId = studentScopeService.requireCurrentStudent().getId();
-        StudentDocument document = requireOwnedDocument(id, studentId);
+        StudentDocument document = documentStorageService.requireDocument(studentId, id);
         documentStorageService.deleteDocument(document);
-    }
-
-    private StudentDocument requireOwnedDocument(Integer id, int studentId) {
-        return documentRepository.findByIdAndStudent_Id(id, studentId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Documento nao encontrado"));
     }
 
     private ResponseEntity<Resource> buildDownloadResponse(StudentDocument document) {

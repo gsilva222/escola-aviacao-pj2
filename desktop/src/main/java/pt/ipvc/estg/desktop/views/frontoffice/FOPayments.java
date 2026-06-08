@@ -1,6 +1,7 @@
 package pt.ipvc.estg.desktop.views.frontoffice;
 
 import pt.ipvc.estg.desktop.controllers.PaymentController;
+import pt.ipvc.estg.desktop.util.PdfExportHelper;
 import pt.ipvc.estg.entities.Payment;
 import pt.ipvc.estg.entities.Student;
 
@@ -241,12 +242,7 @@ public class FOPayments extends JPanel {
 
         JButton exportButton = new JButton("Exportar extrato");
         styleSecondaryButton(exportButton);
-        exportButton.addActionListener(e -> JOptionPane.showMessageDialog(
-                this,
-                "Exportacao em desenvolvimento.",
-                "Informacao",
-                JOptionPane.INFORMATION_MESSAGE
-        ));
+        exportButton.addActionListener(e -> exportStatement());
         header.add(exportButton, BorderLayout.EAST);
 
         card.add(header, BorderLayout.NORTH);
@@ -347,20 +343,10 @@ public class FOPayments extends JPanel {
         JButton action = new JButton("paid".equals(status) ? "Recibo" : "Pagar agora");
         if ("paid".equals(status)) {
             styleSecondaryButton(action);
-            action.addActionListener(e -> JOptionPane.showMessageDialog(
-                    this,
-                    "Download de recibo em desenvolvimento.",
-                    "Informacao",
-                    JOptionPane.INFORMATION_MESSAGE
-            ));
+            action.addActionListener(e -> downloadReceipt(payment));
         } else {
             stylePrimaryButton(action);
-            action.addActionListener(e -> JOptionPane.showMessageDialog(
-                    this,
-                    "Pagamento online em desenvolvimento.",
-                    "Informacao",
-                    JOptionPane.INFORMATION_MESSAGE
-            ));
+            action.addActionListener(e -> showPaymentInstructions(payment));
         }
         right.add(action);
 
@@ -476,5 +462,66 @@ public class FOPayments extends JPanel {
                 new EmptyBorder(6, 9, 6, 9)
         ));
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+    }
+
+    private void exportStatement() {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setSelectedFile(new java.io.File("Extrato_" + student.getName().replace(" ", "_") + ".pdf"));
+        if (fileChooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        try {
+            java.io.File file = fileChooser.getSelectedFile();
+            if (!file.getName().toLowerCase(Locale.ROOT).endsWith(".pdf")) {
+                file = new java.io.File(file.getAbsolutePath() + ".pdf");
+            }
+            PdfExportHelper.exportPaymentStatement(file, student, studentPayments);
+            JOptionPane.showMessageDialog(this, "Extrato exportado com sucesso.\n" + file.getAbsolutePath(),
+                    "Sucesso", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Erro ao exportar extrato: " + ex.getMessage(),
+                    "Erro", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void showPaymentInstructions(Payment payment) {
+        String reference = "AS-" + student.getId() + "-" + (payment.getId() != null ? payment.getId() : "0");
+        String amount = formatEuro(payment.getAmount() != null ? payment.getAmount() : 0.0);
+        String description = safeText(payment.getDescription(), "Mensalidade");
+        String due = formatDate(payment.getDueDate());
+
+        String message = "<html><body style='width:420px'>"
+                + "<b>Pagamento pendente</b><br/><br/>"
+                + "Descricao: " + description + "<br/>"
+                + "Valor: " + amount + "<br/>"
+                + "Vencimento: " + due + "<br/><br/>"
+                + "Referencia obrigatoria: <b>" + reference + "</b><br/>"
+                + "IBAN: PT50 0035 0001 00000000000 00<br/><br/>"
+                + "Pode pagar por transferencia bancaria, MB Way ou Multibanco. "
+                + "A confirmacao e feita pela secretaria apos recepcao do comprovativo."
+                + "</body></html>";
+
+        JOptionPane.showMessageDialog(this, message, "Instrucoes de pagamento", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private void downloadReceipt(Payment payment) {
+        JFileChooser fileChooser = new JFileChooser();
+        String baseName = "Recibo_" + (payment.getId() != null ? payment.getId() : "pagamento") + ".pdf";
+        fileChooser.setSelectedFile(new java.io.File(baseName));
+        if (fileChooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        try {
+            java.io.File file = fileChooser.getSelectedFile();
+            if (!file.getName().toLowerCase(Locale.ROOT).endsWith(".pdf")) {
+                file = new java.io.File(file.getAbsolutePath() + ".pdf");
+            }
+            PdfExportHelper.exportPaymentReceipt(file, student, payment);
+            JOptionPane.showMessageDialog(this, "Recibo gerado com sucesso.\n" + file.getAbsolutePath(),
+                    "Sucesso", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Erro ao gerar recibo: " + ex.getMessage(),
+                    "Erro", JOptionPane.ERROR_MESSAGE);
+        }
     }
 }

@@ -3,8 +3,9 @@ package pt.ipvc.estg.web.controllers;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import pt.ipvc.estg.services.ReportsService;
 import pt.ipvc.estg.web.dto.ReportsSummaryResponse;
-import pt.ipvc.estg.web.services.ReportsService;
+import pt.ipvc.estg.web.mappers.DomainDtoMapper;
 
 @RestController
 @RequestMapping("/bo/reports")
@@ -18,6 +19,6 @@ public class BoReportsController {
 
     @GetMapping("/summary")
     public ReportsSummaryResponse summary() {
-        return reportsService.buildSummary();
+        return DomainDtoMapper.toResponse(reportsService.buildSummary());
     }
 }

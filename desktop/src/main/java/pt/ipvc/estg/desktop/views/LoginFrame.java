@@ -1,6 +1,10 @@
 package pt.ipvc.estg.desktop.views;
 
 import pt.ipvc.estg.desktop.DesktopApp;
+import pt.ipvc.estg.desktop.api.ApiException;
+import pt.ipvc.estg.desktop.api.AppConfig;
+import pt.ipvc.estg.desktop.api.SessionContext;
+import pt.ipvc.estg.desktop.services.DesktopAuthService;
 import pt.ipvc.estg.dal.mock.MockDataSeeder;
 
 import javax.swing.*;
@@ -236,7 +240,7 @@ public class LoginFrame extends JFrame {
 
         formPanel.add(Box.createVerticalStrut(18));
 
-        JLabel demoLabel = new JLabel("Demo: Administrador - admin@aeroschool.pt - qualquer senha");
+        JLabel demoLabel = new JLabel("API: admin / admin123  |  Demo offline: qualquer senha se API indisponivel");
         demoLabel.setForeground(new Color(180, 83, 9));
         demoLabel.setFont(new Font("Inter", Font.PLAIN, 11));
         demoLabel.setAlignmentX(LEFT_ALIGNMENT);
@@ -305,11 +309,51 @@ public class LoginFrame extends JFrame {
     }
 
     private void handleLogin(ActionEvent e) {
-        MockDataSeeder.seedAllData();
         String selectedRole = (String) roleCombo.getSelectedItem();
+        String email = emailField.getText().trim();
+        String password = new String(passwordField.getPassword());
+
+        if (email.isEmpty() || password.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Preencha email e senha.", "Atencao", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        String username = DesktopAuthService.normalizeUsername(email);
+
+        if (AppConfig.isApiEnabled()) {
+            loginButton.setEnabled(false);
+            try {
+                new DesktopAuthService().loginBackOffice(username, password, selectedRole);
+                openDesktop(selectedRole);
+                return;
+            } catch (ApiException ex) {
+                if (ex.isConnectionError()) {
+                    int choice = JOptionPane.showConfirmDialog(
+                            this,
+                            "Nao foi possivel ligar a API.\nContinuar em modo demonstracao (dados locais)?",
+                            "API indisponivel",
+                            JOptionPane.YES_NO_OPTION
+                    );
+                    if (choice != JOptionPane.YES_OPTION) {
+                        return;
+                    }
+                } else {
+                    JOptionPane.showMessageDialog(this, ex.getMessage(), "Erro de autenticacao", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+            } finally {
+                loginButton.setEnabled(true);
+            }
+        }
+
+        SessionContext.clear();
+        MockDataSeeder.seedAllData();
+        openDesktop(selectedRole);
+    }
+
+    private void openDesktop(String selectedRole) {
         setVisible(false);
         dispose();
-
         desktopApp = new DesktopApp(selectedRole);
         desktopApp.setVisible(true);
     }

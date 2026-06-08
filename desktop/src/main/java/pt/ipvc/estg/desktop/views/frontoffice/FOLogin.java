@@ -1,6 +1,7 @@
 package pt.ipvc.estg.desktop.views.frontoffice;
 
-import pt.ipvc.estg.desktop.services.MockStudentLoginService;
+import pt.ipvc.estg.desktop.api.AppConfig;
+import pt.ipvc.estg.desktop.services.StudentLoginService;
 import pt.ipvc.estg.desktop.views.LandingFrame;
 import pt.ipvc.estg.desktop.views.LoginFrame;
 import pt.ipvc.estg.dal.mock.MockDataSeeder;
@@ -22,7 +23,7 @@ public class FOLogin extends JFrame {
     private static final Color BLUE = new Color(36, 105, 199);
     private static final Color BLUE_DARK = new Color(13, 71, 161);
 
-    private final MockStudentLoginService loginService = new MockStudentLoginService();
+    private final StudentLoginService loginService = new StudentLoginService();
     private JTextField userIdField;
     private JPasswordField passwordField;
 
@@ -220,7 +221,10 @@ public class FOLogin extends JFrame {
         notice.setBorder(new EmptyBorder(11, 18, 11, 18));
         notice.setMaximumSize(new Dimension(420, 42));
         notice.setAlignmentX(Component.CENTER_ALIGNMENT);
-        JLabel label = new JLabel("Demo: utilizador joao.silva - qualquer password", SwingConstants.CENTER);
+        String hint = AppConfig.isApiEnabled()
+                ? "API: conta de aluno registada na API  |  Offline: ID 1-4 + qualquer password"
+                : "Modo offline: ID de aluno 1-4 + qualquer password";
+        JLabel label = new JLabel(hint, SwingConstants.CENTER);
         label.setForeground(new Color(180, 83, 9));
         label.setFont(new Font("Inter", Font.PLAIN, 11));
         notice.add(label);
@@ -240,7 +244,6 @@ public class FOLogin extends JFrame {
     }
 
     private void handleLogin() {
-        MockDataSeeder.seedAllData();
         String userId = userIdField.getText().trim();
         String password = new String(passwordField.getPassword());
 
@@ -249,16 +252,17 @@ public class FOLogin extends JFrame {
             return;
         }
 
-        Optional<Student> student = loginService.authenticate(userId, password);
-        if (student.isEmpty()) {
-            student = loginService.authenticate("1", password);
+        if (!AppConfig.isApiEnabled()) {
+            MockDataSeeder.seedAllData();
         }
+
+        Optional<Student> student = loginService.authenticate(userId, password);
 
         if (student.isPresent()) {
             dispose();
             new FOLayout(student.get()).setVisible(true);
         } else {
-            JOptionPane.showMessageDialog(this, "N. de Aluno ou password invalidos.", "Erro", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Utilizador ou password invalidos.", "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }
 

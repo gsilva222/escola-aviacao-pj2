@@ -5,17 +5,22 @@ import org.knowm.xchart.XYChart;
 import org.knowm.xchart.XYChartBuilder;
 import org.knowm.xchart.XYSeries;
 
+import pt.ipvc.estg.desktop.api.SessionContext;
+import pt.ipvc.estg.desktop.api.dto.ReportsSummaryResponse;
+import pt.ipvc.estg.desktop.services.BoAdminService;
+
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
- * Dashboard BackOffice simplificado e consistente com a stack atual.
+ * Dashboard BackOffice com dados da API ou fallback local.
  */
 public class BODashboard extends JPanel {
 
@@ -28,6 +33,29 @@ public class BODashboard extends JPanel {
     private static final Color SUCCESS_COLOR = new Color(34, 197, 94);
     private static final Color WARNING_COLOR = new Color(245, 158, 11);
     private static final Color ERROR_COLOR = new Color(239, 68, 68);
+
+    private final BoAdminService adminService = new BoAdminService();
+
+    private JLabel greetingLabel;
+    private JLabel dateLabel;
+    private JLabel bannerHoursLabel;
+    private JLabel bannerRevenueLabel;
+
+    private JLabel kpiActiveStudents;
+    private JLabel kpiActiveSubtitle;
+    private JLabel kpiFlightsToday;
+    private JLabel kpiFlightsSubtitle;
+    private JLabel kpiAircraft;
+    private JLabel kpiAircraftSubtitle;
+    private JLabel kpiPayments;
+    private JLabel kpiPaymentsSubtitle;
+    private JLabel kpiMaintenance;
+    private JLabel kpiMaintenanceSubtitle;
+
+    private JPanel enrollmentChartPanel;
+    private JLabel aircraftTotalLabel;
+    private JPanel aircraftStatusPanel;
+    private JPanel recentActivityPanel;
 
     public BODashboard() {
         setBackground(LIGHT_BG);
@@ -42,13 +70,105 @@ public class BODashboard extends JPanel {
         JPanel chartsPanel = new JPanel(new GridLayout(1, 2, 14, 0));
         chartsPanel.setOpaque(false);
         chartsPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 282));
-        chartsPanel.add(createEnrollmentChart());
+        enrollmentChartPanel = createEnrollmentChart();
+        chartsPanel.add(enrollmentChartPanel);
         chartsPanel.add(createAircraftStatusPanel());
         add(chartsPanel);
 
         add(Box.createVerticalStrut(14));
-        add(createRecentActivityPanel());
+        recentActivityPanel = createRecentActivityPanel();
+        add(recentActivityPanel);
         add(Box.createVerticalGlue());
+
+        loadDashboardData();
+    }
+
+    private void loadDashboardData() {
+        SwingWorker<Void, Void> worker = new SwingWorker<>() {
+            ReportsSummaryResponse summary;
+            long flightsToday;
+            long completedToday;
+            long scheduledToday;
+            double monthHours;
+            double monthRevenue;
+            List<BoAdminService.ActivityItem> activities = List.of();
+            Map<String, Long> byCourse = Map.of();
+
+            @Override
+            protected Void doInBackground() {
+                try {
+                    summary = adminService.getReportsSummary();
+                    flightsToday = adminService.flightsToday();
+                    completedToday = adminService.completedFlightsToday();
+                    scheduledToday = adminService.scheduledFlightsToday();
+                    monthHours = adminService.flightHoursThisMonth();
+                    monthRevenue = adminService.revenueThisMonth();
+                    activities = adminService.recentActivity(4);
+                    byCourse = adminService.studentsByCourse(summary);
+                } catch (Exception ex) {
+                    System.err.println("Erro ao carregar dashboard: " + ex.getMessage());
+                }
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                applyDashboardData(summary, flightsToday, completedToday, scheduledToday,
+                        monthHours, monthRevenue, activities, byCourse);
+            }
+        };
+        worker.execute();
+    }
+
+    private void applyDashboardData(ReportsSummaryResponse summary, long flightsToday,
+                                    long completedToday, long scheduledToday,
+                                    double monthHours, double monthRevenue,
+                                    List<BoAdminService.ActivityItem> activities,
+                                    Map<String, Long> byCourse) {
+        String adminName = SessionContext.getUsername() != null ? SessionContext.getUsername() : "Administrador";
+        greetingLabel.setText("Bom dia, " + adminName);
+
+        String dateStr = LocalDateTime.now()
+                .format(DateTimeFormatter.ofPattern("EEEE, dd 'de' MMMM 'de' yyyy", new Locale("pt", "PT")));
+        dateLabel.setText("Hoje e " + dateStr + " - " + flightsToday + " voos agendados para hoje");
+
+        bannerHoursLabel.setText(String.format(Locale.ROOT, "%.0fh", monthHours));
+        bannerRevenueLabel.setText(formatEuroShort(monthRevenue));
+
+        if (summary != null) {
+            kpiActiveStudents.setText(String.valueOf(summary.activeStudents()));
+            kpiActiveSubtitle.setText("de " + summary.totalStudents() + " matriculados");
+            kpiAircraft.setText(String.valueOf(summary.operationalAircraft()));
+            kpiAircraftSubtitle.setText("de " + summary.totalAircraft() + " no total");
+            kpiPayments.setText(String.valueOf(summary.pendingPayments() + summary.overduePayments()));
+            kpiPaymentsSubtitle.setText("Valor: " + formatEuroShort(summary.totalPendingAmount()));
+            kpiMaintenance.setText(String.valueOf(summary.activeMaintenances()));
+            kpiMaintenanceSubtitle.setText(summary.maintenanceAircraft() + " aeronaves em manutencao");
+            aircraftTotalLabel.setText(summary.totalAircraft() + " aeronaves no total");
+            updateAircraftRows(summary.operationalAircraft(), summary.maintenanceAircraft(), summary.groundedAircraft());
+        } else {
+            kpiActiveStudents.setText("-");
+            kpiActiveSubtitle.setText("ligue a API para dados reais");
+            kpiAircraft.setText("-");
+            kpiAircraftSubtitle.setText("-");
+            kpiPayments.setText("-");
+            kpiPaymentsSubtitle.setText("-");
+            kpiMaintenance.setText("-");
+            kpiMaintenanceSubtitle.setText("-");
+        }
+
+        kpiFlightsToday.setText(String.valueOf(flightsToday));
+        kpiFlightsSubtitle.setText(completedToday + " completados, " + scheduledToday + " agendados");
+
+        rebuildEnrollmentChart(byCourse);
+        rebuildRecentActivity(activities);
+    }
+
+    private String formatEuroShort(double value) {
+        if (value >= 1000) {
+            return String.format(Locale.ROOT, "EUR %.1fk", value / 1000.0);
+        }
+        return String.format(Locale.ROOT, "EUR %.0f", value);
     }
 
     private JPanel createWelcomeBanner() {
@@ -72,29 +192,32 @@ public class BODashboard extends JPanel {
         leftSection.setOpaque(false);
         leftSection.setLayout(new BoxLayout(leftSection, BoxLayout.Y_AXIS));
 
-        JLabel greeting = new JLabel("Bom dia, Administrador");
-        greeting.setFont(new Font("Inter", Font.BOLD, 17));
-        greeting.setForeground(WHITE);
-        leftSection.add(greeting);
+        greetingLabel = new JLabel("Bom dia, Administrador");
+        greetingLabel.setFont(new Font("Inter", Font.BOLD, 17));
+        greetingLabel.setForeground(WHITE);
+        leftSection.add(greetingLabel);
 
-        String dateStr = LocalDateTime.now()
-                .format(DateTimeFormatter.ofPattern("EEEE, dd 'de' MMMM 'de' yyyy", new Locale("pt", "PT")));
-        JLabel dateLabel = new JLabel("Hoje e " + dateStr + " - 12 voos agendados para hoje");
+        dateLabel = new JLabel("A carregar...");
         dateLabel.setFont(new Font("Inter", Font.BOLD, 11));
         dateLabel.setForeground(new Color(191, 219, 254));
         leftSection.add(dateLabel);
 
         banner.add(leftSection, BorderLayout.WEST);
         banner.add(createBannerStats(), BorderLayout.EAST);
-
         return banner;
     }
 
     private JPanel createBannerStats() {
         JPanel stats = new JPanel(new GridLayout(1, 2, 10, 0));
         stats.setOpaque(false);
-        stats.add(createBannerStat("245h", "Horas este mes"));
-        stats.add(createBannerStat("EUR 24.5k", "Receita mensal"));
+
+        JPanel hours = createBannerStat("0h", "Horas este mes");
+        bannerHoursLabel = (JLabel) hours.getComponent(0);
+        stats.add(hours);
+
+        JPanel revenue = createBannerStat("EUR 0", "Receita mensal");
+        bannerRevenueLabel = (JLabel) revenue.getComponent(0);
+        stats.add(revenue);
         return stats;
     }
 
@@ -123,11 +246,30 @@ public class BODashboard extends JPanel {
         panel.setOpaque(false);
         panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 112));
 
-        panel.add(createKPICard("Alunos Ativos", "40", "de 48 matriculados", BLUE_PRIMARY));
-        panel.add(createKPICard("Voos Hoje", "12", "3 completados, 9 agendados", new Color(124, 58, 237)));
-        panel.add(createKPICard("Aeronaves Disponiveis", "4", "de 5 no total", SUCCESS_COLOR));
-        panel.add(createKPICard("Pagamentos Pendentes", "2", "Valor: EUR 2.980", WARNING_COLOR));
-        panel.add(createKPICard("Manutencoes em Curso", "2", "1 aguarda pecas", ERROR_COLOR));
+        JPanel card1 = createKPICard("Alunos Ativos", "...", "...", BLUE_PRIMARY);
+        kpiActiveStudents = (JLabel) card1.getComponent(1);
+        kpiActiveSubtitle = (JLabel) card1.getComponent(2);
+        panel.add(card1);
+
+        JPanel card2 = createKPICard("Voos Hoje", "...", "...", new Color(124, 58, 237));
+        kpiFlightsToday = (JLabel) card2.getComponent(1);
+        kpiFlightsSubtitle = (JLabel) card2.getComponent(2);
+        panel.add(card2);
+
+        JPanel card3 = createKPICard("Aeronaves Disponiveis", "...", "...", SUCCESS_COLOR);
+        kpiAircraft = (JLabel) card3.getComponent(1);
+        kpiAircraftSubtitle = (JLabel) card3.getComponent(2);
+        panel.add(card3);
+
+        JPanel card4 = createKPICard("Pagamentos Pendentes", "...", "...", WARNING_COLOR);
+        kpiPayments = (JLabel) card4.getComponent(1);
+        kpiPaymentsSubtitle = (JLabel) card4.getComponent(2);
+        panel.add(card4);
+
+        JPanel card5 = createKPICard("Manutencoes em Curso", "...", "...", ERROR_COLOR);
+        kpiMaintenance = (JLabel) card5.getComponent(1);
+        kpiMaintenanceSubtitle = (JLabel) card5.getComponent(2);
+        panel.add(card5);
 
         return panel;
     }
@@ -167,11 +309,42 @@ public class BODashboard extends JPanel {
                 new EmptyBorder(12, 12, 12, 12)
         ));
 
-        JLabel title = new JLabel("Matriculas por Mes");
+        JLabel title = new JLabel("Alunos por Curso");
         title.setFont(new Font("Inter", Font.BOLD, 14));
         title.setForeground(DARK_BG);
         panel.add(title, BorderLayout.NORTH);
+        panel.add(buildCourseChart(Map.of()), BorderLayout.CENTER);
+        return panel;
+    }
 
+    private void rebuildEnrollmentChart(Map<String, Long> byCourse) {
+        Container parent = enrollmentChartPanel.getParent();
+        if (parent == null) {
+            return;
+        }
+        int index = -1;
+        for (int i = 0; i < parent.getComponentCount(); i++) {
+            if (parent.getComponent(i) == enrollmentChartPanel) {
+                index = i;
+                break;
+            }
+        }
+        if (index < 0) {
+            return;
+        }
+        JPanel replacement = createEnrollmentChart();
+        enrollmentChartPanel = replacement;
+        parent.remove(index);
+        if (parent.getLayout() instanceof GridLayout grid) {
+            parent.add(replacement, index);
+        } else {
+            parent.add(replacement);
+        }
+        parent.revalidate();
+        parent.repaint();
+    }
+
+    private XChartPanel<XYChart> buildCourseChart(Map<String, Long> byCourse) {
         XYChart chart = new XYChartBuilder()
                 .width(420)
                 .height(240)
@@ -180,26 +353,29 @@ public class BODashboard extends JPanel {
                 .yAxisTitle("")
                 .build();
 
-        List<Integer> months = Arrays.asList(1, 2, 3, 4, 5, 6, 7);
-        List<Integer> values = Arrays.asList(45, 52, 48, 67, 78, 85, 92);
-        chart.addSeries("Matriculas", months, values);
+        List<Integer> x = new ArrayList<>();
+        List<Integer> y = new ArrayList<>();
+        int i = 1;
+        for (Map.Entry<String, Long> entry : byCourse.entrySet()) {
+            x.add(i++);
+            y.add(entry.getValue().intValue());
+        }
+        if (x.isEmpty()) {
+            x.add(1);
+            y.add(0);
+        }
 
+        chart.addSeries("Alunos", x, y);
         chart.getStyler().setLegendVisible(false);
         chart.getStyler().setChartTitleVisible(false);
         chart.getStyler().setDefaultSeriesRenderStyle(XYSeries.XYSeriesRenderStyle.Area);
         chart.getStyler().setPlotGridLinesVisible(false);
         chart.getStyler().setYAxisMin(0.0);
-        chart.getStyler().setMarkerSize(4);
         chart.getStyler().setChartBackgroundColor(WHITE);
         chart.getStyler().setPlotBackgroundColor(WHITE);
         chart.getStyler().setPlotBorderVisible(false);
-        chart.getStyler().setAxisTicksMarksVisible(false);
-        chart.getStyler().setXAxisTicksVisible(false);
-        chart.getStyler().setYAxisTicksVisible(false);
         chart.getStyler().setChartPadding(8);
-
-        panel.add(new XChartPanel<>(chart), BorderLayout.CENTER);
-        return panel;
+        return new XChartPanel<>(chart);
     }
 
     private JPanel createAircraftStatusPanel() {
@@ -216,18 +392,29 @@ public class BODashboard extends JPanel {
         title.setForeground(DARK_BG);
         panel.add(title);
 
-        JLabel subtitle = new JLabel("5 aeronaves no total");
-        subtitle.setFont(new Font("Inter", Font.PLAIN, 11));
-        subtitle.setForeground(GRAY_TEXT);
-        panel.add(subtitle);
+        aircraftTotalLabel = new JLabel("A carregar...");
+        aircraftTotalLabel.setFont(new Font("Inter", Font.PLAIN, 11));
+        aircraftTotalLabel.setForeground(GRAY_TEXT);
+        panel.add(aircraftTotalLabel);
         panel.add(Box.createVerticalStrut(12));
 
-        panel.add(createStatusRow("Operacional", "4", SUCCESS_COLOR));
-        panel.add(Box.createVerticalStrut(8));
-        panel.add(createStatusRow("Em Manutencao", "1", ERROR_COLOR));
+        aircraftStatusPanel = new JPanel();
+        aircraftStatusPanel.setLayout(new BoxLayout(aircraftStatusPanel, BoxLayout.Y_AXIS));
+        aircraftStatusPanel.setOpaque(false);
+        panel.add(aircraftStatusPanel);
         panel.add(Box.createVerticalGlue());
-
         return panel;
+    }
+
+    private void updateAircraftRows(long operational, long maintenance, long grounded) {
+        aircraftStatusPanel.removeAll();
+        aircraftStatusPanel.add(createStatusRow("Operacional", String.valueOf(operational), SUCCESS_COLOR));
+        aircraftStatusPanel.add(Box.createVerticalStrut(8));
+        aircraftStatusPanel.add(createStatusRow("Em Manutencao", String.valueOf(maintenance), ERROR_COLOR));
+        aircraftStatusPanel.add(Box.createVerticalStrut(8));
+        aircraftStatusPanel.add(createStatusRow("Indisponivel", String.valueOf(grounded), WARNING_COLOR));
+        aircraftStatusPanel.revalidate();
+        aircraftStatusPanel.repaint();
     }
 
     private JPanel createStatusRow(String label, String value, Color color) {
@@ -267,13 +454,58 @@ public class BODashboard extends JPanel {
         title.setForeground(DARK_BG);
         panel.add(title);
         panel.add(Box.createVerticalStrut(10));
-
-        panel.add(createActivityRow("✓", "Voo CS-AER concluido", "Joao Silva · ha 2h", SUCCESS_COLOR));
-        panel.add(createActivityRow("⏳", "Manutencao CS-NAV iniciada", "Tecnico · ha 1h", WARNING_COLOR));
-        panel.add(createActivityRow("✉", "Avaliacao atualizada", "Instrutor · ha 30m", BLUE_PRIMARY));
-        panel.add(createActivityRow("$", "Pagamento recebido", "EUR 2000 · ha 15m", SUCCESS_COLOR));
-
+        panel.add(new JLabel("A carregar..."));
         return panel;
+    }
+
+    private void rebuildRecentActivity(List<BoAdminService.ActivityItem> activities) {
+        Container parent = recentActivityPanel.getParent();
+        if (parent == null) {
+            return;
+        }
+        int index = -1;
+        for (int i = 0; i < parent.getComponentCount(); i++) {
+            if (parent.getComponent(i) == recentActivityPanel) {
+                index = i;
+                break;
+            }
+        }
+
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBackground(WHITE);
+        panel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER_COLOR, 1),
+                new EmptyBorder(14, 14, 14, 14)
+        ));
+        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 210));
+
+        JLabel title = new JLabel("Atividade Recente");
+        title.setFont(new Font("Inter", Font.BOLD, 14));
+        title.setForeground(DARK_BG);
+        panel.add(title);
+        panel.add(Box.createVerticalStrut(10));
+
+        if (activities.isEmpty()) {
+            panel.add(new JLabel("Sem atividade recente"));
+        } else {
+            for (BoAdminService.ActivityItem item : activities) {
+                Color color = switch (item.type()) {
+                    case "success" -> SUCCESS_COLOR;
+                    case "warning" -> WARNING_COLOR;
+                    default -> BLUE_PRIMARY;
+                };
+                panel.add(createActivityRow(item.icon(), item.title(), item.subtitle(), color));
+            }
+        }
+
+        if (index >= 0) {
+            parent.remove(index);
+            parent.add(panel, index);
+        }
+        recentActivityPanel = panel;
+        parent.revalidate();
+        parent.repaint();
     }
 
     private JPanel createActivityRow(String iconText, String title, String subtitle, Color color) {

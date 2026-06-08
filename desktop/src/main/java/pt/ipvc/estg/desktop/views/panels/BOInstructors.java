@@ -11,7 +11,11 @@ import java.util.List;
  * Painel para gerenciar Instrutores
  */
 public class BOInstructors extends JPanel {
-    
+
+    private static final Color PAGE_BG = new Color(238, 242, 247);
+    private static final Color TITLE = new Color(15, 35, 68);
+    private static final Color MUTED = new Color(100, 116, 139);
+
     private final InstructorController instructorController;
     private JTable tableData;
     private DefaultTableModel tableModel;
@@ -28,16 +32,37 @@ public class BOInstructors extends JPanel {
     
     private void initializeUI() {
         setLayout(new BorderLayout(10, 10));
-        setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        
+        setBackground(PAGE_BG);
+        setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
+
+        JPanel header = new JPanel(new BorderLayout());
+        header.setOpaque(false);
+        JLabel title = new JLabel("Gestao de Instrutores");
+        title.setForeground(TITLE);
+        title.setFont(new Font("Inter", Font.BOLD, 22));
+        JLabel subtitle = new JLabel("Licencas, contactos e estado operacional");
+        subtitle.setForeground(MUTED);
+        subtitle.setFont(new Font("Inter", Font.PLAIN, 13));
+        JPanel titles = new JPanel();
+        titles.setOpaque(false);
+        titles.setLayout(new BoxLayout(titles, BoxLayout.Y_AXIS));
+        titles.add(title);
+        titles.add(subtitle);
+        header.add(titles, BorderLayout.WEST);
+        add(header, BorderLayout.NORTH);
+
+        JPanel body = new JPanel(new BorderLayout(10, 10));
+        body.setOpaque(false);
+
         JPanel inputPanel = createInputPanel();
-        add(inputPanel, BorderLayout.NORTH);
+        body.add(inputPanel, BorderLayout.NORTH);
         
         JPanel tablePanel = createTablePanel();
-        add(tablePanel, BorderLayout.CENTER);
-        
+        body.add(tablePanel, BorderLayout.CENTER);
+
         JPanel buttonPanel = createButtonPanel();
-        add(buttonPanel, BorderLayout.SOUTH);
+        body.add(buttonPanel, BorderLayout.SOUTH);
+        add(body, BorderLayout.CENTER);
     }
     
     private JPanel createInputPanel() {

@@ -1,117 +1,81 @@
 package pt.ipvc.estg.services;
 
-import pt.ipvc.estg.dal.PerfilDAO;
 import pt.ipvc.estg.entities.Perfil;
+import pt.ipvc.estg.exception.ConflictException;
+import pt.ipvc.estg.exception.EntityNotFoundException;
+import pt.ipvc.estg.repositories.PerfilRepository;
 
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Serviço de Perfil - Contém a lógica de negócio
- * Atua como intermediário entre a UI e a DAL
- */
 public class PerfilService {
-    
-    private final PerfilDAO perfilDAO;
-    
+
+    private final PerfilRepository perfilRepository;
+
+    public PerfilService(PerfilRepository perfilRepository) {
+        this.perfilRepository = perfilRepository;
+    }
+
     public PerfilService() {
-        this.perfilDAO = new PerfilDAO();
+        this(pt.ipvc.estg.bootstrap.MockServices.getInstance().perfilRepository());
     }
-    
-    /**
-     * Procura um perfil pelo ID
-     */
+
     public Optional<Perfil> getPerfil(Integer id) {
-        if (id == null || id <= 0) {
-            throw new IllegalArgumentException("ID deve ser válido");
-        }
-        return perfilDAO.findById(id);
+        validateId(id);
+        return perfilRepository.findById(id);
     }
-    
-    /**
-     * Procura um perfil pelo nome
-     */
+
     public Optional<Perfil> getPerfilPorNome(String nome) {
         if (nome == null || nome.trim().isEmpty()) {
-            throw new IllegalArgumentException("Nome deve ser válido");
+            throw new IllegalArgumentException("Nome deve ser valido");
         }
-        return perfilDAO.findByNome(nome);
+        return perfilRepository.findByNome(nome);
     }
-    
-    /**
-     * Retorna todos os perfis
-     */
+
     public List<Perfil> getAllPerfis() {
-        return perfilDAO.findAll();
+        return perfilRepository.findAll();
     }
-    
-    /**
-     * Cria um novo perfil
-     */
+
     public Perfil criarPerfil(String nome, String descricao) {
         if (nome == null || nome.trim().isEmpty()) {
-            throw new IllegalArgumentException("Nome é obrigatório");
+            throw new IllegalArgumentException("Nome e obrigatorio");
         }
-        
-        // Verifica se o nome já existe
-        if (perfilDAO.findByNome(nome).isPresent()) {
-            throw new IllegalArgumentException("Já existe um perfil com esse nome");
+        if (perfilRepository.findByNome(nome).isPresent()) {
+            throw new ConflictException("Ja existe um perfil com esse nome");
         }
-        
         Perfil perfil = new Perfil(nome, descricao);
-        return perfilDAO.insert(perfil);
+        return perfilRepository.save(perfil);
     }
-    
-    /**
-     * Atualiza um perfil existente
-     */
+
     public Perfil atualizarPerfil(Integer id, String nome, String descricao) {
-        if (id == null || id <= 0) {
-            throw new IllegalArgumentException("ID deve ser válido");
-        }
-        
-        Optional<Perfil> opt = perfilDAO.findById(id);
-        if (opt.isEmpty()) {
-            throw new IllegalArgumentException("Perfil não encontrado");
-        }
-        
-        Perfil perfil = opt.get();
-        
+        Perfil perfil = getPerfil(id).orElseThrow(() -> new EntityNotFoundException("Perfil nao encontrado"));
         if (nome != null && !nome.trim().isEmpty()) {
-            // Verifica se o novo nome já existe noutro perfil
-            Optional<Perfil> existente = perfilDAO.findByNome(nome);
-            if (existente.isPresent() && !existente.get().getId().equals(id)) {
-                throw new IllegalArgumentException("Já existe outro perfil com esse nome");
-            }
+            perfilRepository.findByNome(nome)
+                    .filter(existing -> !existing.getId().equals(id))
+                    .ifPresent(existing -> {
+                        throw new ConflictException("Ja existe outro perfil com esse nome");
+                    });
             perfil.setNome(nome);
         }
-        
-        if (descricao != null) {
-            perfil.setDescricao(descricao);
-        }
-        
-        return perfilDAO.update(perfil);
+        if (descricao != null) perfil.setDescricao(descricao);
+        return perfilRepository.save(perfil);
     }
-    
-    /**
-     * Elimina um perfil
-     */
+
     public void eliminarPerfil(Integer id) {
-        if (id == null || id <= 0) {
-            throw new IllegalArgumentException("ID deve ser válido");
+        validateId(id);
+        if (perfilRepository.findById(id).isEmpty()) {
+            throw new EntityNotFoundException("Perfil nao encontrado");
         }
-        
-        if (perfilDAO.findById(id).isEmpty()) {
-            throw new IllegalArgumentException("Perfil não encontrado");
-        }
-        
-        perfilDAO.delete(id);
+        perfilRepository.deleteById(id);
     }
-    
-    /**
-     * Retorna o total de perfis
-     */
+
     public long contarPerfis() {
-        return perfilDAO.count();
+        return perfilRepository.count();
+    }
+
+    private static void validateId(Integer id) {
+        if (id == null || id <= 0) {
+            throw new IllegalArgumentException("ID deve ser valido");
+        }
     }
 }

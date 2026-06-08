@@ -6,7 +6,9 @@ import org.knowm.xchart.XChartPanel;
 import org.knowm.xchart.XYChart;
 import org.knowm.xchart.XYChartBuilder;
 import org.knowm.xchart.XYSeries;
+import pt.ipvc.estg.desktop.api.dto.FoHoursSummaryResponse;
 import pt.ipvc.estg.desktop.controllers.FlightController;
+import pt.ipvc.estg.desktop.services.FoStudentService;
 import pt.ipvc.estg.entities.Flight;
 import pt.ipvc.estg.entities.Student;
 
@@ -46,13 +48,23 @@ public class FOHours extends JPanel {
 
     private final Student student;
     private final FlightController flightController;
+    private final FoStudentService foStudentService;
     private final List<Flight> flights = new ArrayList<>();
+    private FoHoursSummaryResponse hoursSummary;
 
     public FOHours(Student student) {
         this.student = student;
         this.flightController = new FlightController();
+        this.foStudentService = new FoStudentService();
         loadFlights();
+        loadHoursSummary();
         initializeUI();
+    }
+
+    private void loadHoursSummary() {
+        if (foStudentService.useApi()) {
+            hoursSummary = foStudentService.getHoursSummary();
+        }
     }
 
     private void loadFlights() {
@@ -91,10 +103,11 @@ public class FOHours extends JPanel {
     }
 
     private JPanel createGoalCard() {
-        double requiredHours = 45.0;
-        double totalHours = calculateCompletedHours();
-        double remaining = Math.max(0, requiredHours - totalHours);
-        int progress = requiredHours <= 0 ? 0 : (int) Math.min(100, Math.round((totalHours * 100.0) / requiredHours));
+        double requiredHours = hoursSummary != null ? hoursSummary.requiredHours() : 45.0;
+        double totalHours = hoursSummary != null ? hoursSummary.totalCompletedHours() : calculateCompletedHours();
+        double remaining = hoursSummary != null ? hoursSummary.remainingHours() : Math.max(0, requiredHours - totalHours);
+        int progress = hoursSummary != null ? hoursSummary.progressPercent()
+                : (requiredHours <= 0 ? 0 : (int) Math.min(100, Math.round((totalHours * 100.0) / requiredHours)));
 
         JPanel card = new JPanel();
         card.setOpaque(true);
@@ -136,22 +149,23 @@ public class FOHours extends JPanel {
     }
 
     private JPanel createStatsRow() {
-        double totalHours = calculateCompletedHours();
-        double localHours = flights.stream()
+        double totalHours = hoursSummary != null ? hoursSummary.totalCompletedHours() : calculateCompletedHours();
+        double localHours = hoursSummary != null ? hoursSummary.localHours() : flights.stream()
                 .filter(f -> "completed".equals(normalizeStatus(f)))
                 .filter(f -> "local".equals(normalizeType(f)))
                 .mapToDouble(f -> f.getDuration() != null ? f.getDuration() : 0.0)
                 .sum();
-        double navHours = flights.stream()
+        double navHours = hoursSummary != null ? hoursSummary.navigationHours() : flights.stream()
                 .filter(f -> "completed".equals(normalizeStatus(f)))
                 .filter(f -> "navigation".equals(normalizeType(f)) || "ifr".equals(normalizeType(f)))
                 .mapToDouble(f -> f.getDuration() != null ? f.getDuration() : 0.0)
                 .sum();
-        double monthlyAverage = totalHours / Math.max(1.0, 6.0);
+        double monthlyAverage = hoursSummary != null ? hoursSummary.monthlyAverageHours() : totalHours / Math.max(1.0, 6.0);
+        long totalFlights = hoursSummary != null ? hoursSummary.totalFlights() : flights.size();
 
         JPanel row = new JPanel(new GridLayout(1, 4, 10, 0));
         row.setOpaque(false);
-        row.add(createStatCard("Total de Voos", String.valueOf(flights.size()), BLUE));
+        row.add(createStatCard("Total de Voos", String.valueOf(totalFlights), BLUE));
         row.add(createStatCard("Voos Locais", formatHours(localHours), GREEN));
         row.add(createStatCard("Navegacao", formatHours(navHours), PURPLE));
         row.add(createStatCard("Media Mensal", formatHours(monthlyAverage), ORANGE));

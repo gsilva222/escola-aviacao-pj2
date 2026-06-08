@@ -1,5 +1,6 @@
 package pt.ipvc.estg.desktop;
 
+import pt.ipvc.estg.desktop.api.SessionContext;
 import pt.ipvc.estg.dal.mock.MockDataSeeder;
 import pt.ipvc.estg.desktop.views.components.Sidebar;
 import pt.ipvc.estg.desktop.views.components.TopBar;
@@ -23,7 +24,9 @@ public class DesktopApp extends JFrame {
 
     public DesktopApp(String role) {
         this.userRole = role;
-        MockDataSeeder.seedAllData();
+        if (!SessionContext.isAuthenticated()) {
+            MockDataSeeder.seedAllData();
+        }
         initializeUI();
     }
 
@@ -41,7 +44,8 @@ public class DesktopApp extends JFrame {
         mainPanel.setBackground(new Color(238, 242, 247));
 
         // Sidebar (LEFT)
-        sidebar = new Sidebar(page -> navigateToPage(page));
+        String sessionUser = SessionContext.getUsername() != null ? SessionContext.getUsername() : userRole;
+        sidebar = new Sidebar(page -> navigateToPage(page), userRole, sessionUser);
         mainPanel.add(sidebar, BorderLayout.WEST);
 
         // Right panel: TopBar (NORTH) + Content (CENTER)
@@ -63,6 +67,7 @@ public class DesktopApp extends JFrame {
         contentPanel.add(new BOCourses(), "courses");
         contentPanel.add(new BOFlights(), "flights");
         contentPanel.add(new BOAircraft(), "aircraft");
+        contentPanel.add(new BOInstructors(), "instructors");
         contentPanel.add(new BOMaintenance(), "maintenance");
         contentPanel.add(new BOEvaluations(), "evaluations");
         contentPanel.add(new BOPayments(), "payments");
@@ -88,6 +93,7 @@ public class DesktopApp extends JFrame {
             case "courses" -> "Cursos e Módulos";
             case "flights" -> "Agendamento de Voos";
             case "aircraft" -> "Gestão de Aeronaves";
+            case "instructors" -> "Instrutores";
             case "maintenance" -> "Manutenção";
             case "evaluations" -> "Avaliações e Exames";
             case "payments" -> "Pagamentos";

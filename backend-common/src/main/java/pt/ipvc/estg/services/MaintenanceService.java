@@ -1,142 +1,197 @@
 package pt.ipvc.estg.services;
 
-import pt.ipvc.estg.dal.mock.MaintenanceDAOMock;
-import pt.ipvc.estg.dal.mock.MockDataSeeder;
-import pt.ipvc.estg.entities.Maintenance;
+import pt.ipvc.estg.domain.PageQuery;
+import pt.ipvc.estg.domain.PageResult;
 import pt.ipvc.estg.entities.Aircraft;
+import pt.ipvc.estg.entities.Maintenance;
+import pt.ipvc.estg.exception.EntityNotFoundException;
+import pt.ipvc.estg.repositories.AircraftRepository;
+import pt.ipvc.estg.repositories.MaintenanceRepository;
+import pt.ipvc.estg.validation.BusinessRules;
+
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Serviço de Maintenance - Lógica de negócio para Manutenções
- */
 public class MaintenanceService {
-    
-    private final MaintenanceDAOMock maintenanceDAO;
-    
+
+    private final MaintenanceRepository maintenanceRepository;
+    private final AircraftRepository aircraftRepository;
+
+    public MaintenanceService(MaintenanceRepository maintenanceRepository, AircraftRepository aircraftRepository) {
+        this.maintenanceRepository = maintenanceRepository;
+        this.aircraftRepository = aircraftRepository;
+    }
+
     public MaintenanceService() {
-        MockDataSeeder.seedAllData();
-        this.maintenanceDAO = new MaintenanceDAOMock();
+        this(pt.ipvc.estg.bootstrap.MockServices.getInstance().maintenanceRepository(),
+                pt.ipvc.estg.bootstrap.MockServices.getInstance().aircraftRepository());
     }
-    
+
     public Optional<Maintenance> getManutencao(Integer id) {
-        if (id == null || id <= 0) {
-            throw new IllegalArgumentException("ID deve ser válido");
+        validateId(id);
+        return maintenanceRepository.findById(id);
+    }
+
+    public Maintenance requireManutencao(Integer id) {
+        return getManutencao(id).orElseThrow(() -> new EntityNotFoundException("Manutencao nao encontrada"));
+    }
+
+    public List<Maintenance> getAllManutencoes() {
+        return maintenanceRepository.findAll();
+    }
+
+    public PageResult<Maintenance> listManutencoes(PageQuery query, Integer aircraftId, String status, String priority) {
+        if (aircraftId != null) {
+            return maintenanceRepository.findByAircraft(aircraftId, query);
         }
-        return maintenanceDAO.findById(id);
+        if (status != null && !status.trim().isEmpty()) {
+            return maintenanceRepository.findByStatus(status, query);
+        }
+        if (priority != null && !priority.trim().isEmpty()) {
+            return maintenanceRepository.findByPriority(priority, query);
+        }
+        return maintenanceRepository.findAll(query);
     }
-    
-    public List<Maintenance> getAllManutenções() {
-        return maintenanceDAO.findAll();
-    }
-    
+
     public List<Maintenance> getManutencoesPorAviao(Integer aircraftId) {
-        if (aircraftId == null || aircraftId <= 0) {
-            throw new IllegalArgumentException("Aircraft ID deve ser válido");
-        }
-        return maintenanceDAO.findByAircraft(aircraftId);
+        validateId(aircraftId);
+        return maintenanceRepository.findByAircraft(aircraftId);
     }
-    
+
     public List<Maintenance> getManutencoesPorStatus(String status) {
         if (status == null || status.trim().isEmpty()) {
-            throw new IllegalArgumentException("Status deve ser válido");
+            throw new IllegalArgumentException("Status deve ser valido");
         }
-        return maintenanceDAO.findByStatus(status);
+        return maintenanceRepository.findByStatus(status);
     }
-    
+
     public List<Maintenance> getManutencoesPorPrioridade(String priority) {
         if (priority == null || priority.trim().isEmpty()) {
-            throw new IllegalArgumentException("Prioridade deve ser válida");
+            throw new IllegalArgumentException("Prioridade deve ser valida");
         }
-        return maintenanceDAO.findByPriority(priority);
+        return maintenanceRepository.findByPriority(priority);
     }
-    
+
     public Maintenance criarManutencao(Aircraft aircraft, String maintenanceType, String description) {
-        if (aircraft == null) {
-            throw new IllegalArgumentException("Avião é obrigatório");
-        }
+        if (aircraft == null) throw new IllegalArgumentException("Aviao e obrigatorio");
         if (maintenanceType == null || maintenanceType.trim().isEmpty()) {
-            throw new IllegalArgumentException("Tipo de manutenção é obrigatório");
+            throw new IllegalArgumentException("Tipo de manutencao e obrigatorio");
         }
         if (description == null || description.trim().isEmpty()) {
-            throw new IllegalArgumentException("Descrição é obrigatória");
+            throw new IllegalArgumentException("Descricao e obrigatoria");
         }
-        
         Maintenance maintenance = new Maintenance(aircraft, maintenanceType, description);
-        return maintenanceDAO.insert(maintenance);
+        return maintenanceRepository.save(maintenance);
     }
-    
-    public Maintenance atualizarManutencao(Integer id, String technician, LocalDate estimatedEnd, 
-                                          String priority, Double cost, String status) {
-        if (id == null || id <= 0) {
-            throw new IllegalArgumentException("ID deve ser válido");
+
+    public Maintenance saveManutencao(Maintenance maintenance) {
+        validateMaintenanceFields(maintenance);
+        resolveAircraft(maintenance);
+        if (maintenance.getStatus() != null) {
+            maintenance.setStatus(BusinessRules.requireAllowed("Status", maintenance.getStatus(), BusinessRules.MAINTENANCE_STATUSES));
         }
-        
-        Optional<Maintenance> opt = maintenanceDAO.findById(id);
-        if (opt.isEmpty()) {
-            throw new IllegalArgumentException("Manutenção não encontrada");
+        if (maintenance.getPriority() != null) {
+            maintenance.setPriority(BusinessRules.requireAllowed("Prioridade", maintenance.getPriority(), BusinessRules.MAINTENANCE_PRIORITIES));
         }
-        
-        Maintenance maintenance = opt.get();
-        
-        if (technician != null && !technician.trim().isEmpty()) {
-            maintenance.setTechnician(technician);
-        }
-        if (estimatedEnd != null) {
-            maintenance.setEstimatedEndDate(estimatedEnd);
-        }
-        if (priority != null) {
-            maintenance.setPriority(priority);
-        }
-        if (cost != null && cost >= 0) {
-            maintenance.setCost(cost);
-        }
-        if (status != null) {
-            maintenance.setStatus(status);
-        }
-        
-        return maintenanceDAO.update(maintenance);
+        return maintenanceRepository.save(maintenance);
     }
-    
+
+    public Maintenance updateManutencao(Integer id, Maintenance updates) {
+        Maintenance maintenance = requireManutencao(id);
+        validateMaintenanceFields(updates, maintenance);
+        if (updates.getMaintenanceType() != null && !updates.getMaintenanceType().trim().isEmpty()) {
+            maintenance.setMaintenanceType(updates.getMaintenanceType());
+        }
+        if (updates.getDescription() != null && !updates.getDescription().trim().isEmpty()) {
+            maintenance.setDescription(updates.getDescription());
+        }
+        if (updates.getTechnician() != null) maintenance.setTechnician(updates.getTechnician());
+        if (updates.getStartDate() != null) maintenance.setStartDate(updates.getStartDate());
+        if (updates.getEstimatedEndDate() != null) maintenance.setEstimatedEndDate(updates.getEstimatedEndDate());
+        if (updates.getActualEndDate() != null) maintenance.setActualEndDate(updates.getActualEndDate());
+        if (updates.getStatus() != null) {
+            maintenance.setStatus(BusinessRules.requireAllowed("Status", updates.getStatus(), BusinessRules.MAINTENANCE_STATUSES));
+        }
+        if (updates.getPriority() != null) {
+            maintenance.setPriority(BusinessRules.requireAllowed("Prioridade", updates.getPriority(), BusinessRules.MAINTENANCE_PRIORITIES));
+        }
+        if (updates.getCost() != null) maintenance.setCost(updates.getCost());
+        if (updates.getNotes() != null) maintenance.setNotes(updates.getNotes());
+        if (updates.getAircraft() != null && updates.getAircraft().getId() != null) {
+            resolveAircraftUpdate(maintenance, updates.getAircraft().getId());
+        }
+        return maintenanceRepository.save(maintenance);
+    }
+
+    public Maintenance atualizarManutencao(Integer id, String technician, LocalDate estimatedEnd,
+                                           String priority, Double cost, String status) {
+        Maintenance maintenance = requireManutencao(id);
+        if (technician != null && !technician.trim().isEmpty()) maintenance.setTechnician(technician);
+        if (estimatedEnd != null) maintenance.setEstimatedEndDate(estimatedEnd);
+        if (priority != null) maintenance.setPriority(priority);
+        if (cost != null && cost >= 0) maintenance.setCost(cost);
+        if (status != null) maintenance.setStatus(status);
+        return maintenanceRepository.save(maintenance);
+    }
+
     public void marcarComoConcluida(Integer id, LocalDate actualEndDate) {
-        if (id == null || id <= 0) {
-            throw new IllegalArgumentException("ID deve ser válido");
-        }
-        
-        Optional<Maintenance> opt = maintenanceDAO.findById(id);
-        if (opt.isEmpty()) {
-            throw new IllegalArgumentException("Manutenção não encontrada");
-        }
-        
-        Maintenance maintenance = opt.get();
+        Maintenance maintenance = requireManutencao(id);
         maintenance.setStatus("completed");
         maintenance.setActualEndDate(actualEndDate != null ? actualEndDate : LocalDate.now());
-        
-        maintenanceDAO.update(maintenance);
+        maintenanceRepository.save(maintenance);
     }
-    
+
     public void eliminarManutencao(Integer id) {
-        if (id == null || id <= 0) {
-            throw new IllegalArgumentException("ID deve ser válido");
+        validateId(id);
+        if (!maintenanceRepository.existsById(id)) {
+            throw new EntityNotFoundException("Manutencao nao encontrada");
         }
-        if (maintenanceDAO.findById(id).isEmpty()) {
-            throw new IllegalArgumentException("Manutenção não encontrada");
-        }
-        maintenanceDAO.delete(id);
+        maintenanceRepository.deleteById(id);
     }
-    
-    public long contarManutenções() {
-        return maintenanceDAO.count();
+
+    public long contarManutencoes() {
+        return maintenanceRepository.count();
     }
-    
+
     public List<Maintenance> getManutencoesPendentes() {
         return getManutencoesPorStatus("scheduled");
     }
-    
+
     public Double calcularCustoTotal() {
-        return getAllManutenções().stream()
+        return getAllManutencoes().stream()
                 .mapToDouble(m -> m.getCost() != null ? m.getCost() : 0.0)
                 .sum();
+    }
+
+    private void validateMaintenanceFields(Maintenance maintenance) {
+        validateMaintenanceFields(maintenance, maintenance);
+    }
+
+    private void validateMaintenanceFields(Maintenance source, Maintenance current) {
+        BusinessRules.requirePositiveOrZero("Custo", source.getCost());
+        LocalDate start = source.getStartDate() != null ? source.getStartDate() : current.getStartDate();
+        LocalDate estimatedEnd = source.getEstimatedEndDate() != null ? source.getEstimatedEndDate() : current.getEstimatedEndDate();
+        LocalDate actualEnd = source.getActualEndDate() != null ? source.getActualEndDate() : current.getActualEndDate();
+        BusinessRules.validateDateOrder("Data estimada de fim", start, estimatedEnd);
+        BusinessRules.validateDateOrder("Data real de fim", start, actualEnd);
+    }
+
+    private void resolveAircraft(Maintenance maintenance) {
+        if (maintenance.getAircraft() != null && maintenance.getAircraft().getId() != null) {
+            resolveAircraftUpdate(maintenance, maintenance.getAircraft().getId());
+        }
+    }
+
+    private void resolveAircraftUpdate(Maintenance maintenance, Integer aircraftId) {
+        Aircraft aircraft = aircraftRepository.findById(aircraftId)
+                .orElseThrow(() -> new EntityNotFoundException("Aeronave nao encontrada"));
+        maintenance.setAircraft(aircraft);
+    }
+
+    private static void validateId(Integer id) {
+        if (id == null || id <= 0) {
+            throw new IllegalArgumentException("ID deve ser valido");
+        }
     }
 }

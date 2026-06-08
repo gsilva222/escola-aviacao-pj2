@@ -16,8 +16,13 @@ target/
 *.log
 Thumbs.db
 
-# Documentação Markdown
+# Documentação Markdown (excepto README principal)
 *.md
+!README.md
 
-# Mockups e designs
-Mockups para Escola de Aviação/
+# Frontend
+frontend/node_modules
+frontend/dist
+
+# Environment
+.env

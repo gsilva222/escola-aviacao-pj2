@@ -2,9 +2,7 @@ package pt.ipvc.estg.web.controllers;
 
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
-import pt.ipvc.estg.web.dto.AuthLoginRequest;
-import pt.ipvc.estg.web.dto.AuthRegisterRequest;
-import pt.ipvc.estg.web.dto.AuthResponse;
+import pt.ipvc.estg.web.dto.*;
 import pt.ipvc.estg.web.services.AuthService;
 
 @RestController
@@ -25,5 +23,15 @@ public class AuthController {
     @PostMapping("/register")
     public AuthResponse register(@Valid @RequestBody AuthRegisterRequest request) {
         return authService.register(request);
+    }
+
+    @GetMapping("/me")
+    public MeResponse me() {
+        return authService.me();
+    }
+
+    @PostMapping("/change-password")
+    public void changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        authService.changePassword(request);
     }
 }

@@ -7,7 +7,8 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import pt.ipvc.estg.entities.Student;
 import pt.ipvc.estg.entities.StudentDocument;
-import pt.ipvc.estg.web.repositories.StudentDocumentRepository;
+import pt.ipvc.estg.exception.EntityNotFoundException;
+import pt.ipvc.estg.services.StudentDocumentService;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -17,12 +18,12 @@ import java.util.UUID;
 @Service
 public class DocumentStorageService {
 
-    private final StudentDocumentRepository documentRepository;
+    private final StudentDocumentService documentService;
     private final Path uploadRoot;
 
-    public DocumentStorageService(StudentDocumentRepository documentRepository,
+    public DocumentStorageService(StudentDocumentService documentService,
                                   @Value("${app.upload.dir:./uploads}") String uploadDir) {
-        this.documentRepository = documentRepository;
+        this.documentService = documentService;
         this.uploadRoot = Path.of(uploadDir).toAbsolutePath().normalize();
     }
 
@@ -30,7 +31,7 @@ public class DocumentStorageService {
         if (file == null || file.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ficheiro obrigatorio");
         }
-        String originalName = sanitizeFileName(file.getOriginalFilename());
+        String originalName = StudentDocumentService.sanitizeFileName(file.getOriginalFilename());
         try {
             Path studentDir = uploadRoot.resolve(String.valueOf(student.getId()));
             Files.createDirectories(studentDir);
@@ -39,18 +40,19 @@ public class DocumentStorageService {
             file.transferTo(target);
 
             String contentType = file.getContentType() != null ? file.getContentType() : "application/octet-stream";
-            StudentDocument document = new StudentDocument(student, originalName, contentType, target.toString(), category);
-            return documentRepository.save(document);
+            return documentService.register(student, originalName, contentType, target.toString(), category);
         } catch (IOException ex) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Erro ao guardar documento");
         }
     }
 
     public Path resolvePath(StudentDocument document) {
-        Path path = Path.of(document.getStoragePath()).normalize();
-        if (!path.startsWith(uploadRoot)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Caminho de ficheiro invalido");
+        try {
+            documentService.validateStoragePath(document.getStoragePath(), uploadRoot);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, ex.getMessage());
         }
+        Path path = Path.of(document.getStoragePath()).normalize();
         if (!Files.exists(path)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Ficheiro nao encontrado");
         }
@@ -68,14 +70,14 @@ public class DocumentStorageService {
         } catch (IOException ex) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Erro ao eliminar documento");
         }
-        documentRepository.delete(document);
+        documentService.deleteMetadata(document);
     }
 
-    private String sanitizeFileName(String name) {
-        if (name == null || name.isBlank()) {
-            return "documento.bin";
+    public StudentDocument requireDocument(int studentId, int documentId) {
+        try {
+            return documentService.requireDocument(studentId, documentId);
+        } catch (EntityNotFoundException ex) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, ex.getMessage());
         }
-        String cleaned = Path.of(name).getFileName().toString().replaceAll("[^a-zA-Z0-9._-]", "_");
-        return cleaned.isBlank() ? "documento.bin" : cleaned;
     }
 }

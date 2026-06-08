@@ -1,147 +1,168 @@
 package pt.ipvc.estg.services;
 
-import pt.ipvc.estg.dal.mock.AircraftDAOMock;
-import pt.ipvc.estg.dal.mock.MockDataSeeder;
+import pt.ipvc.estg.domain.PageQuery;
+import pt.ipvc.estg.domain.PageResult;
 import pt.ipvc.estg.entities.Aircraft;
+import pt.ipvc.estg.exception.ConflictException;
+import pt.ipvc.estg.exception.EntityNotFoundException;
+import pt.ipvc.estg.repositories.AircraftRepository;
+import pt.ipvc.estg.validation.BusinessRules;
+
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Serviço de Aircraft - Lógica de negócio para Aviões
- */
 public class AircraftService {
-    
-    private final AircraftDAOMock aircraftDAO;
-    
+
+    private final AircraftRepository aircraftRepository;
+
+    public AircraftService(AircraftRepository aircraftRepository) {
+        this.aircraftRepository = aircraftRepository;
+    }
+
     public AircraftService() {
-        MockDataSeeder.seedAllData();
-        this.aircraftDAO = new AircraftDAOMock();
+        this(pt.ipvc.estg.bootstrap.MockServices.getInstance().aircraftRepository());
     }
-    
+
     public Optional<Aircraft> getAviao(Integer id) {
-        if (id == null || id <= 0) {
-            throw new IllegalArgumentException("ID deve ser válido");
-        }
-        return aircraftDAO.findById(id);
+        validateId(id);
+        return aircraftRepository.findById(id);
     }
-    
-    public Optional<Aircraft> getAviãoPorMatricula(String registration) {
+
+    public Aircraft requireAviao(Integer id) {
+        return getAviao(id).orElseThrow(() -> new EntityNotFoundException("Aviao nao encontrado"));
+    }
+
+    public Optional<Aircraft> getAviaoPorMatricula(String registration) {
         if (registration == null || registration.trim().isEmpty()) {
-            throw new IllegalArgumentException("Matrícula deve ser válida");
+            throw new IllegalArgumentException("Matricula deve ser valida");
         }
-        return aircraftDAO.findByRegistration(registration);
+        return aircraftRepository.findByRegistration(registration);
     }
-    
+
     public List<Aircraft> getAllAvioes() {
-        return aircraftDAO.findAll();
+        return aircraftRepository.findAll();
     }
-    
+
+    public PageResult<Aircraft> listAvioes(PageQuery query, String status) {
+        if (status != null && !status.trim().isEmpty()) {
+            return aircraftRepository.findByStatus(status, query);
+        }
+        return aircraftRepository.findAll(query);
+    }
+
     public List<Aircraft> getAvioesPorStatus(String status) {
         if (status == null || status.trim().isEmpty()) {
-            throw new IllegalArgumentException("Status deve ser válido");
+            throw new IllegalArgumentException("Status deve ser valido");
         }
-        return aircraftDAO.findByStatus(status);
+        return aircraftRepository.findByStatus(status);
     }
-    
+
     public Aircraft criarAviao(String registration, String model, String type) {
         if (registration == null || registration.trim().isEmpty()) {
-            throw new IllegalArgumentException("Matrícula é obrigatória");
+            throw new IllegalArgumentException("Matricula e obrigatoria");
         }
         if (model == null || model.trim().isEmpty()) {
-            throw new IllegalArgumentException("Modelo é obrigatório");
+            throw new IllegalArgumentException("Modelo e obrigatorio");
         }
         if (type == null || type.trim().isEmpty()) {
-            throw new IllegalArgumentException("Tipo é obrigatório");
+            throw new IllegalArgumentException("Tipo e obrigatorio");
         }
-        
-        if (aircraftDAO.findByRegistration(registration).isPresent()) {
-            throw new IllegalArgumentException("Já existe um avião com essa matrícula");
+        if (aircraftRepository.findByRegistration(registration).isPresent()) {
+            throw new ConflictException("Ja existe um aviao com essa matricula");
         }
-        
         Aircraft aircraft = new Aircraft(registration, model, type);
-        return aircraftDAO.insert(aircraft);
+        return aircraftRepository.save(aircraft);
     }
-    
-    public Aircraft atualizarAviao(Integer id, String model, Integer year, 
-                                  String location, Integer fuelLevel) {
-        if (id == null || id <= 0) {
-            throw new IllegalArgumentException("ID deve ser válido");
+
+    public Aircraft saveAviao(Aircraft aircraft) {
+        validateAircraftFields(aircraft);
+        if (aircraft.getRegistration() != null) {
+            aircraftRepository.findByRegistration(aircraft.getRegistration())
+                    .filter(existing -> aircraft.getId() == null || !existing.getId().equals(aircraft.getId()))
+                    .ifPresent(existing -> {
+                        throw new ConflictException("Ja existe um aviao com essa matricula");
+                    });
         }
-        
-        Optional<Aircraft> opt = aircraftDAO.findById(id);
-        if (opt.isEmpty()) {
-            throw new IllegalArgumentException("Avião não encontrado");
+        if (aircraft.getStatus() != null) {
+            aircraft.setStatus(BusinessRules.requireAllowed("Status", aircraft.getStatus(), BusinessRules.AIRCRAFT_STATUSES));
         }
-        
-        Aircraft aircraft = opt.get();
-        
-        if (model != null && !model.trim().isEmpty()) {
-            aircraft.setModel(model);
-        }
-        if (year != null && year > 0) {
-            aircraft.setManufYear(year);
-        }
-        if (location != null) {
-            aircraft.setLocation(location);
-        }
-        if (fuelLevel != null && fuelLevel >= 0 && fuelLevel <= 100) {
-            aircraft.setFuelLevel(fuelLevel);
-        }
-        
-        return aircraftDAO.update(aircraft);
+        return aircraftRepository.save(aircraft);
     }
-    
+
+    public Aircraft updateAviao(Integer id, Aircraft updates) {
+        Aircraft aircraft = requireAviao(id);
+        validateAircraftFields(updates);
+        if (updates.getRegistration() != null && !updates.getRegistration().trim().isEmpty()) {
+            aircraftRepository.findByRegistration(updates.getRegistration())
+                    .filter(existing -> !existing.getId().equals(id))
+                    .ifPresent(existing -> {
+                        throw new ConflictException("Ja existe outra aeronave com esta matricula");
+                    });
+            aircraft.setRegistration(updates.getRegistration());
+        }
+        if (updates.getModel() != null && !updates.getModel().trim().isEmpty()) aircraft.setModel(updates.getModel());
+        if (updates.getType() != null && !updates.getType().trim().isEmpty()) aircraft.setType(updates.getType());
+        if (updates.getManufYear() != null) aircraft.setManufYear(updates.getManufYear());
+        if (updates.getStatus() != null) {
+            aircraft.setStatus(BusinessRules.requireAllowed("Status", updates.getStatus(), BusinessRules.AIRCRAFT_STATUSES));
+        }
+        if (updates.getFlightHours() != null) aircraft.setFlightHours(updates.getFlightHours());
+        if (updates.getLastMaintenance() != null) aircraft.setLastMaintenance(updates.getLastMaintenance());
+        if (updates.getNextMaintenance() != null) aircraft.setNextMaintenance(updates.getNextMaintenance());
+        if (updates.getLocation() != null) aircraft.setLocation(updates.getLocation());
+        if (updates.getFuelLevel() != null) aircraft.setFuelLevel(updates.getFuelLevel());
+        if (updates.getNotes() != null) aircraft.setNotes(updates.getNotes());
+        return aircraftRepository.save(aircraft);
+    }
+
+    private void validateAircraftFields(Aircraft aircraft) {
+        BusinessRules.requirePositiveOrZero("Horas de voo", aircraft.getFlightHours());
+        BusinessRules.requirePercent("Nivel de combustivel", aircraft.getFuelLevel());
+    }
+
+    public Aircraft atualizarAviao(Integer id, String model, Integer year,
+                                   String location, Integer fuelLevel) {
+        Aircraft aircraft = requireAviao(id);
+        if (model != null && !model.trim().isEmpty()) aircraft.setModel(model);
+        if (year != null && year > 0) aircraft.setManufYear(year);
+        if (location != null) aircraft.setLocation(location);
+        if (fuelLevel != null && fuelLevel >= 0 && fuelLevel <= 100) aircraft.setFuelLevel(fuelLevel);
+        return aircraftRepository.save(aircraft);
+    }
+
     public void atualizarStatus(Integer id, String status) {
-        if (id == null || id <= 0) {
-            throw new IllegalArgumentException("ID deve ser válido");
-        }
-        
-        Optional<Aircraft> opt = aircraftDAO.findById(id);
-        if (opt.isEmpty()) {
-            throw new IllegalArgumentException("Avião não encontrado");
-        }
-        
-        Aircraft aircraft = opt.get();
-        aircraft.setStatus(status);
-        aircraftDAO.update(aircraft);
+        Aircraft aircraft = requireAviao(id);
+        aircraft.setStatus(BusinessRules.requireAllowed("Status", status, BusinessRules.AIRCRAFT_STATUSES));
+        aircraftRepository.save(aircraft);
     }
-    
-    public void atualizarManutenção(Integer id, LocalDate nextMaintenance) {
-        if (id == null || id <= 0) {
-            throw new IllegalArgumentException("ID deve ser válido");
-        }
-        
-        Optional<Aircraft> opt = aircraftDAO.findById(id);
-        if (opt.isEmpty()) {
-            throw new IllegalArgumentException("Avião não encontrado");
-        }
-        
-        Aircraft aircraft = opt.get();
+
+    public void atualizarManutencao(Integer id, LocalDate nextMaintenance) {
+        Aircraft aircraft = requireAviao(id);
         aircraft.setLastMaintenance(LocalDate.now());
-        if (nextMaintenance != null) {
-            aircraft.setNextMaintenance(nextMaintenance);
-        }
-        aircraftDAO.update(aircraft);
+        if (nextMaintenance != null) aircraft.setNextMaintenance(nextMaintenance);
+        aircraftRepository.save(aircraft);
     }
-    
+
     public void eliminarAviao(Integer id) {
-        if (id == null || id <= 0) {
-            throw new IllegalArgumentException("ID deve ser válido");
+        validateId(id);
+        if (!aircraftRepository.existsById(id)) {
+            throw new EntityNotFoundException("Aviao nao encontrado");
         }
-        if (aircraftDAO.findById(id).isEmpty()) {
-            throw new IllegalArgumentException("Avião não encontrado");
-        }
-        aircraftDAO.delete(id);
+        aircraftRepository.deleteById(id);
     }
-    
+
     public long contarAvioes() {
-        return aircraftDAO.count();
+        return aircraftRepository.count();
     }
-    
-    public long contarAviõesOperacionais() {
-        return getAllAvioes().stream()
-                .filter(a -> "operational".equals(a.getStatus()))
-                .count();
+
+    public long contarAvioesOperacionais() {
+        return getAllAvioes().stream().filter(a -> "operational".equals(a.getStatus())).count();
+    }
+
+    private static void validateId(Integer id) {
+        if (id == null || id <= 0) {
+            throw new IllegalArgumentException("ID deve ser valido");
+        }
     }
 }

@@ -16,19 +16,7 @@ public class StudentDAOMock {
     private static final AtomicInteger idSequence = new AtomicInteger(1);
     
     static {
-        // Dados iniciais removidos - usar MockDataSeeder.seedStudents() na aplicação
-        // para popular com dados realistas
-    }
-    
-    private static void inserirEstudanteInicial(String name, String email, String phone, 
-                                               String nif, Course course) {
-        Student student = new Student(name, email, course);
-        student.setPhone(phone);
-        student.setNif(nif);
-        student.setPaymentStatus("up_to_date");
-        int id = idSequence.getAndIncrement();
-        student.setId(id);
-        database.put(id, student);
+        // Dados iniciais removidos - usar MockDataSeeder.seedStudents() na aplicacao
     }
     
     public Optional<Student> findById(Integer id) {
@@ -83,5 +71,11 @@ public class StudentDAOMock {
     
     public long count() {
         return database.size();
+    }
+
+    /** Limpa estado em memoria (uso em testes). */
+    public static void reset() {
+        database.clear();
+        idSequence.set(1);
     }
 }

@@ -1,8 +1,10 @@
 package pt.ipvc.estg.desktop.views.panels;
 
+import pt.ipvc.estg.desktop.api.dto.StudentDocumentResponse;
 import pt.ipvc.estg.desktop.controllers.StudentController;
 import pt.ipvc.estg.desktop.controllers.FlightController;
 import pt.ipvc.estg.desktop.controllers.EvaluationController;
+import pt.ipvc.estg.desktop.services.BoAdminService;
 import pt.ipvc.estg.entities.Student;
 import pt.ipvc.estg.entities.Flight;
 import pt.ipvc.estg.entities.Evaluation;
@@ -28,11 +30,13 @@ public class BOStudentFile extends JDialog {
     private final StudentController studentController;
     private final FlightController flightController;
     private final EvaluationController evaluationController;
+    private final BoAdminService boAdminService = new BoAdminService();
     private Student student;
     
     // Document management
     private static final String DOCUMENTS_DIR = "documentos";
     private List<File> uploadedDocuments;
+    private List<StudentDocumentResponse> apiDocuments = new ArrayList<>();
 
     // UI Components
     private JLabel lblStudentName;
@@ -56,8 +60,6 @@ public class BOStudentFile extends JDialog {
         this.student = studentController.obterEstudante(studentId)
                 .orElseThrow(() -> new IllegalArgumentException("Estudante não encontrado"));
         
-        // Initialize document directory
-        initializeDocumentDirectory();
         loadUploadedDocuments();
 
         initializeUI();
@@ -505,7 +507,49 @@ public class BOStudentFile extends JDialog {
     }
 
     private void editProfile() {
-        JOptionPane.showMessageDialog(this, "Funcionalidade em desenvolvimento", "Info", JOptionPane.INFORMATION_MESSAGE);
+        JTextField nameField = new JTextField(student.getName() != null ? student.getName() : "");
+        JTextField emailField = new JTextField(student.getEmail() != null ? student.getEmail() : "");
+        JTextField phoneField = new JTextField(student.getPhone() != null ? student.getPhone() : "");
+        JTextField nifField = new JTextField(student.getNif() != null ? student.getNif() : "");
+        JTextField birthField = new JTextField(
+                student.getBirthdate() != null ? student.getBirthdate().toString() : "");
+
+        JPanel form = new JPanel(new GridLayout(0, 2, 8, 8));
+        form.add(new JLabel("Nome"));
+        form.add(nameField);
+        form.add(new JLabel("Email"));
+        form.add(emailField);
+        form.add(new JLabel("Telemovel"));
+        form.add(phoneField);
+        form.add(new JLabel("NIF"));
+        form.add(nifField);
+        form.add(new JLabel("Data nascimento (AAAA-MM-DD)"));
+        form.add(birthField);
+
+        int result = JOptionPane.showConfirmDialog(this, form, "Editar perfil do aluno",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (result != JOptionPane.OK_OPTION) {
+            return;
+        }
+
+        try {
+            LocalDate birthdate = birthField.getText().isBlank() ? null : LocalDate.parse(birthField.getText().trim());
+            studentController.atualizarEstudante(
+                    student.getId(),
+                    nameField.getText().trim(),
+                    emailField.getText().trim(),
+                    phoneField.getText().trim(),
+                    nifField.getText().trim(),
+                    birthdate
+            );
+            student = studentController.obterEstudante(student.getId()).orElse(student);
+            loadStudentData();
+            JOptionPane.showMessageDialog(this, "Perfil atualizado com sucesso.", "Sucesso",
+                    JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Erro ao atualizar perfil: " + ex.getMessage(), "Erro",
+                    JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private void exportFile() {
@@ -577,14 +621,21 @@ public class BOStudentFile extends JDialog {
             doc.add(new com.itextpdf.layout.element.Paragraph(""));
             
             // Documentos
-            if (!uploadedDocuments.isEmpty()) {
+            boolean hasDocs = boAdminService.useApi() ? !apiDocuments.isEmpty() : !uploadedDocuments.isEmpty();
+            if (hasDocs) {
                 doc.add(new com.itextpdf.layout.element.Paragraph("DOCUMENTOS")
                     .setBold()
                     .setFontSize(14));
                 
                 com.itextpdf.layout.element.Table table3 = new com.itextpdf.layout.element.Table(1);
-                for (File doc_file : uploadedDocuments) {
-                    table3.addCell(doc_file.getName());
+                if (boAdminService.useApi()) {
+                    for (StudentDocumentResponse docInfo : apiDocuments) {
+                        table3.addCell(docInfo.fileName());
+                    }
+                } else {
+                    for (File doc_file : uploadedDocuments) {
+                        table3.addCell(doc_file.getName());
+                    }
                 }
                 doc.add(table3);
                 doc.add(new com.itextpdf.layout.element.Paragraph(""));
@@ -615,19 +666,20 @@ public class BOStudentFile extends JDialog {
     
     // ===== Métodos para gerenciar documentos =====
     
-    private void initializeDocumentDirectory() {
+    private void loadUploadedDocuments() {
+        uploadedDocuments.clear();
+        apiDocuments.clear();
+        if (boAdminService.useApi()) {
+            try {
+                apiDocuments.addAll(boAdminService.listStudentDocuments(student.getId()));
+            } catch (Exception e) {
+                System.err.println("Erro ao carregar documentos da API: " + e.getMessage());
+            }
+            return;
+        }
         Path docDir = Paths.get(DOCUMENTS_DIR, "student_" + student.getId());
         try {
             Files.createDirectories(docDir);
-        } catch (IOException e) {
-            System.err.println("Erro ao criar pasta de documentos: " + e.getMessage());
-        }
-    }
-    
-    private void loadUploadedDocuments() {
-        uploadedDocuments.clear();
-        Path docDir = Paths.get(DOCUMENTS_DIR, "student_" + student.getId());
-        try {
             if (Files.exists(docDir)) {
                 Files.list(docDir)
                     .filter(Files::isRegularFile)
@@ -646,17 +698,19 @@ public class BOStudentFile extends JDialog {
         if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
             File selectedFile = fileChooser.getSelectedFile();
             try {
-                Path destDir = Paths.get(DOCUMENTS_DIR, "student_" + student.getId());
-                Files.createDirectories(destDir);
-                
-                Path destPath = destDir.resolve(selectedFile.getName());
-                Files.copy(selectedFile.toPath(), destPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                
-                uploadedDocuments.add(destPath.toFile());
+                if (boAdminService.useApi()) {
+                    boAdminService.uploadStudentDocument(student.getId(), selectedFile.toPath(), "general");
+                    loadUploadedDocuments();
+                } else {
+                    Path destDir = Paths.get(DOCUMENTS_DIR, "student_" + student.getId());
+                    Files.createDirectories(destDir);
+                    Path destPath = destDir.resolve(selectedFile.getName());
+                    Files.copy(selectedFile.toPath(), destPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                    uploadedDocuments.add(destPath.toFile());
+                }
                 refreshDocumentsList();
-                
                 JOptionPane.showMessageDialog(this, "Documento uploadado com sucesso!", "Sucesso", JOptionPane.INFORMATION_MESSAGE);
-            } catch (IOException e) {
+            } catch (Exception e) {
                 JOptionPane.showMessageDialog(this, "Erro ao fazer upload: " + e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
             }
         }
@@ -671,14 +725,30 @@ public class BOStudentFile extends JDialog {
             try {
                 Files.copy(document.toPath(), destFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
                 JOptionPane.showMessageDialog(this, "Documento guardado com sucesso!", "Sucesso", JOptionPane.INFORMATION_MESSAGE);
-                
-                // Abrir com aplicação padrão
                 if (Desktop.isDesktopSupported()) {
                     Desktop.getDesktop().open(destFile);
                 }
             } catch (IOException e) {
                 JOptionPane.showMessageDialog(this, "Erro ao guardar: " + e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
             }
+        }
+    }
+
+    private void downloadApiDocument(StudentDocumentResponse document) {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setSelectedFile(new File(document.fileName()));
+        if (fileChooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        try {
+            Path temp = boAdminService.downloadStudentDocument(student.getId(), document.id(), document.fileName());
+            Files.copy(temp, fileChooser.getSelectedFile().toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            JOptionPane.showMessageDialog(this, "Documento guardado com sucesso!", "Sucesso", JOptionPane.INFORMATION_MESSAGE);
+            if (Desktop.isDesktopSupported()) {
+                Desktop.getDesktop().open(fileChooser.getSelectedFile());
+            }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Erro ao guardar: " + e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }
     
@@ -695,51 +765,81 @@ public class BOStudentFile extends JDialog {
             }
         }
     }
+
+    private void deleteApiDocument(StudentDocumentResponse document) {
+        int confirm = JOptionPane.showConfirmDialog(this, "Tem a certeza que quer eliminar este documento?", "Confirmação", JOptionPane.YES_NO_OPTION);
+        if (confirm == JOptionPane.YES_OPTION) {
+            try {
+                boAdminService.deleteStudentDocument(student.getId(), document.id());
+                loadUploadedDocuments();
+                refreshDocumentsList();
+                JOptionPane.showMessageDialog(this, "Documento eliminado com sucesso!", "Sucesso", JOptionPane.INFORMATION_MESSAGE);
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(this, "Erro ao eliminar: " + e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
     
     private void refreshDocumentsList() {
         documentsList.removeAll();
         
-        // Botão de upload
         JButton btnUpload = new JButton("➕ Upload Novo Documento");
         btnUpload.setBackground(new Color(220, 252, 231));
         btnUpload.setForeground(new Color(22, 163, 74));
         btnUpload.addActionListener(e -> uploadDocument());
         documentsList.add(btnUpload);
         
-        // Listar documentos
-        if (uploadedDocuments.isEmpty()) {
+        if (boAdminService.useApi()) {
+            if (apiDocuments.isEmpty()) {
+                JLabel lblEmpty = new JLabel("Nenhum documento carregado");
+                lblEmpty.setForeground(new Color(100, 100, 100));
+                documentsList.add(lblEmpty);
+            } else {
+                for (StudentDocumentResponse doc : apiDocuments) {
+                    documentsList.add(buildDocumentRow("📄 " + doc.fileName(),
+                            () -> downloadApiDocument(doc),
+                            () -> deleteApiDocument(doc)));
+                }
+            }
+        } else if (uploadedDocuments.isEmpty()) {
             JLabel lblEmpty = new JLabel("Nenhum documento carregado");
             lblEmpty.setForeground(new Color(100, 100, 100));
             documentsList.add(lblEmpty);
         } else {
             for (File doc : uploadedDocuments) {
-                JPanel docPanel = new JPanel(new BorderLayout(10, 0));
-                docPanel.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200)));
-                docPanel.setBackground(Color.WHITE);
-                docPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-                
-                JLabel lblDoc = new JLabel("📄 " + doc.getName());
-                lblDoc.setFont(new Font("Arial", Font.BOLD, 12));
-                docPanel.add(lblDoc, BorderLayout.WEST);
-                
-                JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
-                btnPanel.setOpaque(false);
-                
-                JButton btnDownload = new JButton("⬇ Download");
-                btnDownload.addActionListener(e -> downloadDocument(doc));
-                btnPanel.add(btnDownload);
-                
-                JButton btnDelete = new JButton("🗑 Eliminar");
-                btnDelete.addActionListener(e -> deleteDocument(doc));
-                btnPanel.add(btnDelete);
-                
-                docPanel.add(btnPanel, BorderLayout.EAST);
-                documentsList.add(docPanel);
+                File fileRef = doc;
+                documentsList.add(buildDocumentRow("📄 " + doc.getName(),
+                        () -> downloadDocument(fileRef),
+                        () -> deleteDocument(fileRef)));
             }
         }
         
         documentsList.revalidate();
         documentsList.repaint();
+    }
+
+    private JPanel buildDocumentRow(String label, Runnable onDownload, Runnable onDelete) {
+        JPanel docPanel = new JPanel(new BorderLayout(10, 0));
+        docPanel.setBackground(Color.WHITE);
+        docPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        JLabel lblDoc = new JLabel(label);
+        lblDoc.setFont(new Font("Arial", Font.BOLD, 12));
+        docPanel.add(lblDoc, BorderLayout.WEST);
+
+        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
+        btnPanel.setOpaque(false);
+
+        JButton btnDownload = new JButton("⬇ Download");
+        btnDownload.addActionListener(e -> onDownload.run());
+        btnPanel.add(btnDownload);
+
+        JButton btnDelete = new JButton("🗑 Eliminar");
+        btnDelete.addActionListener(e -> onDelete.run());
+        btnPanel.add(btnDelete);
+
+        docPanel.add(btnPanel, BorderLayout.EAST);
+        return docPanel;
     }
 
     private String getStudentInitials() {

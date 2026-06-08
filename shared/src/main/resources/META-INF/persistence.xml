@@ -1,8 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <persistence xmlns="https://jakarta.ee/xml/ns/persistence" version="3.0">
+    <!--
+      Unidade JPA legada para uso standalone (ferramentas/tests locais).
+      A aplicacao web usa Spring Boot; o desktop usa DAOs mock em memoria.
+      Sobrescrever ligacao via propriedades de sistema, por exemplo:
+        -Djakarta.persistence.jdbc.url=jdbc:postgresql://localhost:5432/escola_aviacao
+        -Djakarta.persistence.jdbc.user=postgres
+        -Djakarta.persistence.jdbc.password=secret
+    -->
     <persistence-unit name="escolaAviacaoPU" transaction-type="RESOURCE_LOCAL">
         <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
-        
+
         <class>pt.ipvc.estg.entities.Perfil</class>
         <class>pt.ipvc.estg.entities.Course</class>
         <class>pt.ipvc.estg.entities.Student</class>
@@ -14,17 +22,15 @@
         <class>pt.ipvc.estg.entities.Maintenance</class>
         <class>pt.ipvc.estg.entities.UserAccount</class>
         <class>pt.ipvc.estg.entities.StudentDocument</class>
-        
+
         <properties>
-            <!-- Configuração do servidor PostgreSQL -->
-            <property name="jakarta.persistence.jdbc.url" value="jdbc:postgresql://doberserver222.cc:2345/escola_aviacao"/>
-            <property name="jakarta.persistence.jdbc.user" value="admin_escola"/>
-            <property name="jakarta.persistence.jdbc.password" value="admin_password123"/>
+            <property name="jakarta.persistence.jdbc.url" value="jdbc:postgresql://localhost:5432/escola_aviacao"/>
+            <property name="jakarta.persistence.jdbc.user" value="postgres"/>
+            <property name="jakarta.persistence.jdbc.password" value=""/>
             <property name="jakarta.persistence.jdbc.driver" value="org.postgresql.Driver"/>
 
-            <!-- Configurações do Hibernate -->
             <property name="hibernate.hbm2ddl.auto" value="validate"/>
-            <property name="hibernate.show_sql" value="true"/>
+            <property name="hibernate.show_sql" value="false"/>
             <property name="hibernate.format_sql" value="true"/>
             <property name="hibernate.dialect" value="org.hibernate.dialect.PostgreSQLDialect"/>
         </properties>

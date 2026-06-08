@@ -1,8 +1,8 @@
 package pt.ipvc.estg.desktop.views.panels;
 
-import pt.ipvc.estg.dal.mock.AircraftDAOMock;
-import pt.ipvc.estg.dal.mock.InstructorDAOMock;
+import pt.ipvc.estg.desktop.controllers.AircraftController;
 import pt.ipvc.estg.desktop.controllers.FlightController;
+import pt.ipvc.estg.desktop.controllers.InstructorController;
 import pt.ipvc.estg.desktop.controllers.StudentController;
 import pt.ipvc.estg.entities.Aircraft;
 import pt.ipvc.estg.entities.Flight;
@@ -39,8 +39,8 @@ public class BOFlights extends JPanel {
 
     private final FlightController flightController;
     private final StudentController studentController;
-    private final InstructorDAOMock instructorDAO;
-    private final AircraftDAOMock aircraftDAO;
+    private final InstructorController instructorController;
+    private final AircraftController aircraftController;
 
     private final CardLayout centerLayout = new CardLayout();
     private final JPanel centerPanel = new JPanel(centerLayout);
@@ -62,8 +62,8 @@ public class BOFlights extends JPanel {
     public BOFlights() {
         this.flightController = new FlightController();
         this.studentController = new StudentController();
-        this.instructorDAO = new InstructorDAOMock();
-        this.aircraftDAO = new AircraftDAOMock();
+        this.instructorController = new InstructorController();
+        this.aircraftController = new AircraftController();
 
         setLayout(new BorderLayout(0, 12));
         setBackground(PAGE_BG);
@@ -425,10 +425,10 @@ public class BOFlights extends JPanel {
                 }
                 LocalDate date = LocalDate.parse(dateField.getText().trim());
 
-                Instructor instructor = instructorDAO.findAll().stream()
+                Instructor instructor = instructorController.listarInstrutores().stream()
                         .findFirst()
-                        .orElseThrow(() -> new IllegalArgumentException("Sem instrutores disponíveis."));
-                Aircraft aircraft = aircraftDAO.findAll().stream()
+                        .orElseThrow(() -> new IllegalArgumentException("Sem instrutores disponiveis."));
+                Aircraft aircraft = aircraftController.listarAvioes().stream()
                         .filter(a -> "operational".equalsIgnoreCase(a.getStatus()))
                         .findFirst()
                         .orElseThrow(() -> new IllegalArgumentException("Sem aeronaves operacionais."));

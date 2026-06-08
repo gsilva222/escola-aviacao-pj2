@@ -1,0 +1,59 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: aeroschool-db
+    environment:
+      POSTGRES_DB: aeroschool
+      POSTGRES_USER: aeroschool
+      POSTGRES_PASSWORD: aeroschool
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./web/src/main/resources/db/schema-postgresql.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aeroschool -d aeroschool"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aeroschool-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/aeroschool
+      DB_USER: aeroschool
+      DB_PASSWORD: aeroschool
+      JWT_SECRET: change_me_in_production_min_32_chars!!
+      JWT_EXP_MIN: 120
+      SEED_ENABLED: "true"
+      SEED_BUSINESS: "true"
+      SEED_STUDENTS: "true"
+      SEED_ADMIN_USER: admin
+      SEED_ADMIN_PASS: admin123
+      SEED_STUDENT_PASS: aluno123
+      UPLOAD_DIR: /app/uploads
+      AUTH_ALLOW_PUBLIC_ADMIN: "false"
+    ports:
+      - "8080:8080"
+    volumes:
+      - uploads_data:/app/uploads
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: aeroschool-web
+    depends_on:
+      - api
+    ports:
+      - "5173:80"
+
+volumes:
+  postgres_data:
+  uploads_data:

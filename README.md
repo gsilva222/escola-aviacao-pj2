@@ -1,74 +1,71 @@
-# Escola de Aviação — PJ2
+# Escola de Aviação — Parte Web
 
-Projeto multi-módulo Maven: **desktop** (Swing), **web** (API REST Spring Boot) e módulos partilhados.
+API REST Spring Boot + frontend React para gestão da escola de aviação.
 
-## Módulo Web (API)
+## Requisitos
 
-Base URL: `http://localhost:8080/api`
+- Java 17+
+- Maven 3.9+
+- Node.js 20+ (frontend)
+- PostgreSQL 16 (ou Docker)
 
-### Variáveis de ambiente
-
-| Variável | Descrição |
-|----------|-----------|
-| `DB_URL` | JDBC PostgreSQL, ex. `jdbc:postgresql://localhost:5432/escola_aviacao` |
-| `DB_USER` | Utilizador da base de dados |
-| `DB_PASSWORD` | Password da base de dados |
-| `JWT_SECRET` | Segredo JWT (mín. 32 caracteres) |
-| `SEED_ADMIN_PASS` | Password do admin inicial (opcional em dev: `admin123`) |
-| `SEED_STUDENT_PASS` | Password dos alunos criados pelo seed (default: `aluno123`) |
-| `SEED_ENABLED` | `true` para criar contas e dados demo |
-| `SEED_BUSINESS` | `true` para popular cursos/alunos/voos (default: `true`) |
-| `UPLOAD_DIR` | Pasta de documentos (default: `./uploads`) |
-
-### Base de dados
-
-1. Criar base PostgreSQL vazia.
-2. Executar `web/src/main/resources/db/schema-postgresql.sql`.
-3. Definir `spring.jpa.hibernate.ddl-auto=validate` (já configurado).
-
-### Arranque
+## Arranque rápido com Docker
 
 ```bash
-mvn -pl web spring-boot:run
+cp .env.example .env
+docker compose up --build
 ```
 
-Swagger: `http://localhost:8080/api/swagger`
+| Serviço   | URL                          |
+|-----------|------------------------------|
+| API       | http://localhost:8080/api    |
+| Swagger   | http://localhost:8080/api/swagger |
+| Health    | http://localhost:8080/api/actuator/health |
+| Frontend  | http://localhost:5173        |
 
-### Autenticação
+**Credenciais seed:** `admin` / `admin123` (BackOffice) · alunos: email do aluno / `aluno123`
 
-- `POST /api/auth/register` — criar conta (primeiro `ADMIN`, depois `STUDENT` com `studentId`)
-- `POST /api/auth/login` — obter JWT
+## Arranque local (sem Docker)
 
-Header: `Authorization: Bearer <token>`
-
-### Endpoints principais
-
-**BackOffice** (`ROLE_ADMIN`): `/api/bo/*`
-
-- CRUD: courses, students, instructors, aircraft, flights, payments, evaluations, maintenance
-- `GET /api/bo/reports/summary` — KPIs agregados
-- `GET /api/bo/payments/summary` — totais de pagamentos
-- `GET/POST/DELETE /api/bo/student-documents/{studentId}` — documentos do aluno
-
-**FrontOffice** (`ROLE_STUDENT`): `/api/fo/*`
-
-- `GET/PUT /api/fo/me` — perfil
-- `GET /api/fo/dashboard` — resumo
-- `GET /api/fo/flights`, `/api/fo/schedule`, `/api/fo/hours`
-- `GET /api/fo/evaluations`
-- `GET /api/fo/payments`, `/api/fo/payments/summary`
-- `GET/POST/DELETE /api/fo/documents` — documentos do aluno autenticado
-
-### Testes
+### 1. Base de dados
 
 ```bash
-mvn -pl web test
+createdb aeroschool
+psql -d aeroschool -f web/src/main/resources/db/schema-postgresql.sql
 ```
 
-## Módulo Desktop
+### 2. API
+
+Defina as variáveis (ver `.env.example`) e execute:
 
 ```bash
-mvn -pl desktop exec:java -Dexec.mainClass="pt.ipvc.estg.desktop.DesktopApp"
+mvn -pl web -am spring-boot:run
 ```
 
-(ou executar a classe principal configurada no IDE)
+### 3. Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Abra http://localhost:5173
+
+## Endpoints principais
+
+- **Auth:** `POST /auth/login`, `POST /auth/register`, `GET /auth/me`, `POST /auth/change-password`
+- **BackOffice:** `/bo/students`, `/bo/courses`, `/bo/flights`, `/bo/aircraft`, `/bo/instructors`, `/bo/maintenance`, `/bo/evaluations`, `/bo/payments`, `/bo/reports/summary`, `/bo/dashboard`, `/bo/profiles`
+- **FrontOffice (aluno):** `/fo/me`, `/fo/dashboard`, `/fo/flights`, `/fo/schedule`, `/fo/hours`, `/fo/evaluations`, `/fo/payments`, `/fo/documents`
+
+## Segurança
+
+- JWT Bearer token em todos os endpoints (excepto login, registo de aluno e health)
+- Registo de `ADMIN` público desactivado por defeito (`AUTH_ALLOW_PUBLIC_ADMIN=false`)
+- Apenas admins autenticados podem criar novos admins via `POST /auth/register`
+
+## Testes
+
+```bash
+mvn -pl web -am test
+```

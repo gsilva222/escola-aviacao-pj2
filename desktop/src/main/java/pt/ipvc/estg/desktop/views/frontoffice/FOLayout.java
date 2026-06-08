@@ -1,5 +1,7 @@
 package pt.ipvc.estg.desktop.views.frontoffice;
 
+import pt.ipvc.estg.desktop.services.FoStudentService;
+import pt.ipvc.estg.desktop.services.DesktopAuthService;
 import pt.ipvc.estg.entities.Student;
 import pt.ipvc.estg.desktop.views.components.UITheme;
 
@@ -29,7 +31,12 @@ public class FOLayout extends JFrame {
     private String activePage = "dashboard";
 
     public FOLayout(Student student) {
-        this.currentStudent = student;
+        FoStudentService foStudentService = new FoStudentService();
+        if (foStudentService.useApi()) {
+            this.currentStudent = foStudentService.refreshProfile().orElse(student);
+        } else {
+            this.currentStudent = student;
+        }
         initializeUI();
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1400, 850);
@@ -255,6 +262,7 @@ public class FOLayout extends JFrame {
         );
 
         if (confirm == JOptionPane.YES_OPTION) {
+            DesktopAuthService.logout();
             dispose();
             new FOLogin().setVisible(true);
         }

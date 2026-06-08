@@ -2,115 +2,49 @@ package pt.ipvc.estg.web.controllers;
 
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
-import pt.ipvc.estg.entities.Course;
+import pt.ipvc.estg.services.CourseService;
+import pt.ipvc.estg.util.PageQueryParser;
 import pt.ipvc.estg.web.dto.CourseRequest;
 import pt.ipvc.estg.web.dto.CourseResponse;
 import pt.ipvc.estg.web.mappers.CourseMapper;
-import pt.ipvc.estg.web.repositories.CourseRepository;
-import pt.ipvc.estg.web.validation.BusinessRules;
-
-import java.util.List;
+import pt.ipvc.estg.web.mappers.DomainDtoMapper;
 
 @RestController
 @RequestMapping("/bo/courses")
 public class CourseController {
 
-    private final CourseRepository courseRepository;
+    private final CourseService courseService;
 
-    public CourseController(CourseRepository courseRepository) {
-        this.courseRepository = courseRepository;
+    public CourseController(CourseService courseService) {
+        this.courseService = courseService;
     }
 
     @GetMapping
     public Page<CourseResponse> getCourses(@RequestParam(defaultValue = "0") int page,
                                            @RequestParam(defaultValue = "20") int size,
                                            @RequestParam(required = false) String sort) {
-        PageRequest pageable = PageRequest.of(page, size, buildSort(sort));
-        return courseRepository.findAll(pageable).map(CourseMapper::toResponse);
+        var result = courseService.listCursos(PageQueryParser.parse(page, size, sort));
+        return DomainDtoMapper.toSpringPage(result, CourseMapper::toResponse, sort);
     }
 
     @GetMapping("/{id}")
     public CourseResponse getCourse(@PathVariable("id") Integer id) {
-        Course course = courseRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Curso nao encontrado"));
-        return CourseMapper.toResponse(course);
+        return CourseMapper.toResponse(courseService.requireCurso(id));
     }
 
     @PostMapping
     public CourseResponse createCourse(@Valid @RequestBody CourseRequest request) {
-        BusinessRules.requirePositive("Horas de voo", request.flightHours());
-        BusinessRules.requirePositive("Horas teoricas", request.theoreticalHours());
-        BusinessRules.requirePositiveOrZero("Preco", request.price());
-        courseRepository.findByNameIgnoreCase(request.name()).ifPresent(existing -> {
-            throw new ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "Ja existe um curso com esse nome");
-        });
-
-        Course course = new Course(
-                request.name(),
-                request.duration(),
-                request.flightHours(),
-                request.theoreticalHours(),
-                request.price()
-        );
-        if (request.description() != null) {
-            course.setDescription(request.description());
-        }
-
-        Course created = courseRepository.save(course);
-        return CourseMapper.toResponse(created);
+        return CourseMapper.toResponse(courseService.saveCurso(CourseMapper.toEntity(request)));
     }
 
     @PutMapping("/{id}")
     public CourseResponse updateCourse(@PathVariable("id") Integer id, @RequestBody CourseRequest request) {
-        BusinessRules.requirePositive("Horas de voo", request.flightHours());
-        BusinessRules.requirePositive("Horas teoricas", request.theoreticalHours());
-        BusinessRules.requirePositiveOrZero("Preco", request.price());
-        Course course = courseRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Curso nao encontrado"));
-
-        if (request.name() != null && !request.name().trim().isEmpty()) {
-            courseRepository.findByNameIgnoreCase(request.name())
-                    .filter(existing -> !existing.getId().equals(id))
-                    .ifPresent(existing -> {
-                        throw new ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "Ja existe outro curso com esse nome");
-                    });
-            course.setName(request.name());
-        }
-        if (request.duration() != null) course.setDuration(request.duration());
-        if (request.flightHours() != null) course.setFlightHours(request.flightHours());
-        if (request.theoreticalHours() != null) course.setTheoreticalHours(request.theoreticalHours());
-        if (request.price() != null) course.setPrice(request.price());
-        if (request.description() != null) course.setDescription(request.description());
-
-        Course updated = courseRepository.save(course);
-        return CourseMapper.toResponse(updated);
+        return CourseMapper.toResponse(courseService.updateCurso(id, CourseMapper.toEntity(request)));
     }
 
     @DeleteMapping("/{id}")
     public void deleteCourse(@PathVariable("id") Integer id) {
-        if (!courseRepository.existsById(id)) {
-            throw new ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Curso nao encontrado");
-        }
-        courseRepository.deleteById(id);
-    }
-
-    private Sort buildSort(String sort) {
-        if (sort == null || sort.trim().isEmpty()) {
-            return Sort.unsorted();
-        }
-        String[] parts = sort.split(",", 2);
-        String property = parts[0].trim();
-        if (property.isEmpty()) {
-            return Sort.unsorted();
-        }
-        Sort.Direction direction = Sort.Direction.ASC;
-        if (parts.length == 2 && "desc".equalsIgnoreCase(parts[1].trim())) {
-            direction = Sort.Direction.DESC;
-        }
-        return Sort.by(direction, property);
+        courseService.eliminarCurso(id);
     }
 }

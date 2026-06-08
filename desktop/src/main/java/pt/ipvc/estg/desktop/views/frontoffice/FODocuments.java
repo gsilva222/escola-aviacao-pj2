@@ -1,5 +1,7 @@
 package pt.ipvc.estg.desktop.views.frontoffice;
 
+import pt.ipvc.estg.desktop.api.dto.StudentDocumentResponse;
+import pt.ipvc.estg.desktop.services.FoStudentService;
 import pt.ipvc.estg.entities.Student;
 
 import javax.swing.*;
@@ -36,16 +38,29 @@ public class FODocuments extends JPanel {
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final Student student;
+    private final FoStudentService foStudentService;
     private final List<DocumentInfo> documents = new ArrayList<>();
 
     public FODocuments(Student student) {
         this.student = student;
+        this.foStudentService = new FoStudentService();
         loadDocuments();
         initializeUI();
     }
 
     private void loadDocuments() {
         documents.clear();
+        if (foStudentService.useApi()) {
+            try {
+                for (StudentDocumentResponse doc : foStudentService.myDocuments()) {
+                    documents.add(new DocumentInfo(doc));
+                }
+            } catch (RuntimeException ex) {
+                JOptionPane.showMessageDialog(this, "Erro ao carregar documentos: " + ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+            }
+            return;
+        }
+
         File folder = new File("documentos/student_" + student.getId());
         if (!folder.exists() || !folder.isDirectory()) {
             return;
@@ -247,10 +262,18 @@ public class FODocuments extends JPanel {
         section.setOpaque(false);
         section.setLayout(new BoxLayout(section, BoxLayout.Y_AXIS));
 
+        JPanel header = new JPanel(new BorderLayout());
+        header.setOpaque(false);
         JLabel title = new JLabel("Todos os Documentos");
         title.setForeground(TITLE);
         title.setFont(new Font("Inter", Font.BOLD, 14));
-        section.add(title);
+        header.add(title, BorderLayout.WEST);
+        if (foStudentService.useApi()) {
+            JButton uploadBtn = createPrimaryButton("Carregar");
+            uploadBtn.addActionListener(e -> uploadDocument());
+            header.add(uploadBtn, BorderLayout.EAST);
+        }
+        section.add(header);
         section.add(Box.createVerticalStrut(8));
 
         JPanel listCard = new JPanel();
@@ -405,18 +428,53 @@ public class FODocuments extends JPanel {
     }
 
     private void openOrPreview(DocumentInfo doc) {
-        if (doc.file.exists()) {
-            openDocument(doc.file);
+        File file = resolveDocumentFile(doc);
+        if (file != null && file.exists()) {
+            openDocument(file);
         } else {
             JOptionPane.showMessageDialog(this, doc.displayName + "\n" + doc.description, "Documento", JOptionPane.INFORMATION_MESSAGE);
         }
     }
 
     private void saveOrPreview(DocumentInfo doc) {
-        if (doc.file.exists()) {
-            saveCopy(doc.file);
+        File file = resolveDocumentFile(doc);
+        if (file != null && file.exists()) {
+            saveCopy(file);
         } else {
-            JOptionPane.showMessageDialog(this, "Download demo em desenvolvimento.", "Documento", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Nao foi possivel transferir o documento.", "Documento", JOptionPane.WARNING_MESSAGE);
+        }
+    }
+
+    private File resolveDocumentFile(DocumentInfo doc) {
+        if (doc.file != null && doc.file.exists()) {
+            return doc.file;
+        }
+        if (doc.apiId != null && foStudentService.useApi()) {
+            try {
+                Path downloaded = foStudentService.downloadDocument(doc.apiId, doc.displayName + ".bin");
+                return downloaded.toFile();
+            } catch (RuntimeException ex) {
+                JOptionPane.showMessageDialog(this, ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+        return doc.file;
+    }
+
+    private void uploadDocument() {
+        JFileChooser chooser = new JFileChooser();
+        if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        try {
+            foStudentService.uploadDocument(chooser.getSelectedFile().toPath(), "general");
+            loadDocuments();
+            removeAll();
+            initializeUI();
+            revalidate();
+            repaint();
+            JOptionPane.showMessageDialog(this, "Documento carregado com sucesso.", "Sucesso", JOptionPane.INFORMATION_MESSAGE);
+        } catch (RuntimeException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -436,6 +494,7 @@ public class FODocuments extends JPanel {
     }
 
     private static class DocumentInfo {
+        private final Integer apiId;
         private final File file;
         private final String displayName;
         private final String description;
@@ -444,12 +503,29 @@ public class FODocuments extends JPanel {
         private final boolean valid;
         private final long sizeKb;
         private final String type;
-        private final String typeLabel;
-        private final String typeIcon;
-        private final Color typeColor;
-        private final Color typeBg;
+        private String typeLabel;
+        private String typeIcon;
+        private Color typeColor;
+        private Color typeBg;
+
+        private DocumentInfo(StudentDocumentResponse doc) {
+            this.apiId = doc.id();
+            this.file = null;
+            this.displayName = stripExtension(doc.fileName());
+            this.description = doc.category() != null ? doc.category() : "Documento do aluno";
+            this.issueDate = doc.uploadedAt() != null
+                    ? doc.uploadedAt().atZone(ZoneId.systemDefault()).toLocalDate()
+                    : LocalDate.now();
+            this.expiryDate = null;
+            this.valid = true;
+            this.sizeKb = 1;
+            String ext = extension(doc.fileName());
+            this.type = mapCategory(doc.category(), ext);
+            applyTypeStyle(this.type);
+        }
 
         private DocumentInfo(File file) {
+            this.apiId = null;
             this.file = file;
             this.displayName = stripExtension(file.getName());
             this.description = "Documento oficial do percurso academico";
@@ -459,35 +535,12 @@ public class FODocuments extends JPanel {
                     && (expiryDate == null || !expiryDate.isBefore(LocalDate.now()));
             this.sizeKb = Math.max(1, file.length() / 1024);
 
-            String ext = extension(file.getName());
-            if ("pdf".equals(ext)) {
-                this.type = "certificate";
-                this.typeLabel = "Certificado";
-                this.typeIcon = "\uD83D\uDCC4";
-                this.typeColor = new Color(29, 78, 216);
-                this.typeBg = new Color(219, 234, 254);
-            } else if ("jpg".equals(ext) || "jpeg".equals(ext) || "png".equals(ext)) {
-                this.type = "id";
-                this.typeLabel = "Identificacao";
-                this.typeIcon = "\uD83D\uDCB3";
-                this.typeColor = new Color(124, 58, 237);
-                this.typeBg = new Color(243, 232, 255);
-            } else if ("zip".equals(ext)) {
-                this.type = "insurance";
-                this.typeLabel = "Arquivo";
-                this.typeIcon = "\uD83D\uDCE6";
-                this.typeColor = new Color(217, 119, 6);
-                this.typeBg = new Color(254, 243, 199);
-            } else {
-                this.type = "declaration";
-                this.typeLabel = "Declaracao";
-                this.typeIcon = "\uD83D\uDCC3";
-                this.typeColor = new Color(100, 116, 139);
-                this.typeBg = new Color(241, 245, 249);
-            }
+            this.type = mapCategory(null, extension(file.getName()));
+            applyTypeStyle(this.type);
         }
 
         private DocumentInfo(String displayName, String typeLabel, String type, LocalDate issueDate, LocalDate expiryDate) {
+            this.apiId = null;
             this.file = new File(displayName + ".pdf");
             this.displayName = displayName;
             this.description = switch (type) {
@@ -503,8 +556,21 @@ public class FODocuments extends JPanel {
             this.valid = expiryDate == null || !expiryDate.isBefore(LocalDate.now());
             this.sizeKb = 245;
             this.type = type;
+            applyTypeStyle(type);
             this.typeLabel = typeLabel;
-            this.typeIcon = switch (type) {
+        }
+
+        private void applyTypeStyle(String typeKey) {
+            this.typeLabel = switch (typeKey) {
+                case "certificate" -> "Certificado";
+                case "medical" -> "Medico";
+                case "id" -> "Identificacao";
+                case "contract" -> "Contrato";
+                case "insurance" -> "Seguro";
+                case "declaration" -> "Declaracao";
+                default -> "Documento";
+            };
+            this.typeIcon = switch (typeKey) {
                 case "medical" -> "\u26E8";
                 case "id" -> "\u25AD";
                 case "contract" -> "\uD83D\uDCC4";
@@ -512,7 +578,7 @@ public class FODocuments extends JPanel {
                 case "declaration" -> "\uD83D\uDCC3";
                 default -> "\u269D";
             };
-            this.typeColor = switch (type) {
+            this.typeColor = switch (typeKey) {
                 case "medical" -> new Color(22, 163, 74);
                 case "id" -> new Color(124, 58, 237);
                 case "contract" -> new Color(217, 119, 6);
@@ -520,7 +586,7 @@ public class FODocuments extends JPanel {
                 case "declaration" -> new Color(100, 116, 139);
                 default -> new Color(29, 78, 216);
             };
-            this.typeBg = switch (type) {
+            this.typeBg = switch (typeKey) {
                 case "medical" -> new Color(220, 252, 231);
                 case "id" -> new Color(243, 232, 255);
                 case "contract" -> new Color(254, 243, 199);
@@ -528,6 +594,21 @@ public class FODocuments extends JPanel {
                 case "declaration" -> new Color(241, 245, 249);
                 default -> new Color(219, 234, 254);
             };
+        }
+
+        private static String mapCategory(String category, String ext) {
+            if (category != null) {
+                String lower = category.toLowerCase(Locale.ROOT);
+                if (lower.contains("med")) return "medical";
+                if (lower.contains("cert")) return "certificate";
+                if (lower.contains("id")) return "id";
+                if (lower.contains("contr")) return "contract";
+                if (lower.contains("insur") || lower.contains("segur")) return "insurance";
+            }
+            if ("pdf".equals(ext)) return "certificate";
+            if ("jpg".equals(ext) || "jpeg".equals(ext) || "png".equals(ext)) return "id";
+            if ("zip".equals(ext)) return "insurance";
+            return "declaration";
         }
 
         private static DocumentInfo mock(String displayName, String typeLabel, String type, LocalDate issueDate, LocalDate expiryDate) {

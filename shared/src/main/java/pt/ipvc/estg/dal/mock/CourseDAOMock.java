@@ -70,4 +70,10 @@ public class CourseDAOMock {
     public long count() {
         return database.size();
     }
+
+    /** Limpa estado em memoria (uso em testes). */
+    public static void reset() {
+        database.clear();
+        idSequence.set(1);
+    }
 }

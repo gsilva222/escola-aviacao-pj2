@@ -1,116 +1,134 @@
 package pt.ipvc.estg.services;
 
-import pt.ipvc.estg.dal.mock.InstructorDAOMock;
-import pt.ipvc.estg.dal.mock.MockDataSeeder;
+import pt.ipvc.estg.domain.PageQuery;
+import pt.ipvc.estg.domain.PageResult;
 import pt.ipvc.estg.entities.Instructor;
+import pt.ipvc.estg.exception.ConflictException;
+import pt.ipvc.estg.exception.EntityNotFoundException;
+import pt.ipvc.estg.repositories.InstructorRepository;
+import pt.ipvc.estg.validation.BusinessRules;
+
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Serviço de Instructor - Lógica de negócio para Instrutores
- */
 public class InstructorService {
-    
-    private final InstructorDAOMock instructorDAO;
-    
+
+    private final InstructorRepository instructorRepository;
+
+    public InstructorService(InstructorRepository instructorRepository) {
+        this.instructorRepository = instructorRepository;
+    }
+
     public InstructorService() {
-        MockDataSeeder.seedAllData();
-        this.instructorDAO = new InstructorDAOMock();
+        this(pt.ipvc.estg.bootstrap.MockServices.getInstance().instructorRepository());
     }
-    
+
     public Optional<Instructor> getInstrutor(Integer id) {
-        if (id == null || id <= 0) {
-            throw new IllegalArgumentException("ID deve ser válido");
-        }
-        return instructorDAO.findById(id);
+        validateId(id);
+        return instructorRepository.findById(id);
     }
-    
+
+    public Instructor requireInstrutor(Integer id) {
+        return getInstrutor(id).orElseThrow(() -> new EntityNotFoundException("Instrutor nao encontrado"));
+    }
+
     public Optional<Instructor> getIntrutorPorNome(String name) {
         if (name == null || name.trim().isEmpty()) {
-            throw new IllegalArgumentException("Nome deve ser válido");
+            throw new IllegalArgumentException("Nome deve ser valido");
         }
-        return instructorDAO.findByName(name);
+        return instructorRepository.findByName(name);
     }
-    
+
     public List<Instructor> getAllIntrutores() {
-        return instructorDAO.findAll();
+        return instructorRepository.findAll();
     }
-    
+
+    public PageResult<Instructor> listIntrutores(PageQuery query, String status) {
+        if (status != null && !status.trim().isEmpty()) {
+            return instructorRepository.findByStatus(status, query);
+        }
+        return instructorRepository.findAll(query);
+    }
+
     public List<Instructor> getIntrutoresPorStatus(String status) {
         if (status == null || status.trim().isEmpty()) {
-            throw new IllegalArgumentException("Status deve ser válido");
+            throw new IllegalArgumentException("Status deve ser valido");
         }
-        return instructorDAO.findByStatus(status);
+        return instructorRepository.findByStatus(status);
     }
-    
+
     public Instructor criarInstrutor(String name, String license, String specialization) {
         if (name == null || name.trim().isEmpty()) {
-            throw new IllegalArgumentException("Nome é obrigatório");
+            throw new IllegalArgumentException("Nome e obrigatorio");
         }
         if (license == null || license.trim().isEmpty()) {
-            throw new IllegalArgumentException("Licença é obrigatória");
+            throw new IllegalArgumentException("Licenca e obrigatoria");
         }
-        
-        if (instructorDAO.findByName(name).isPresent()) {
-            throw new IllegalArgumentException("Já existe um instrutor com esse nome");
+        if (instructorRepository.findByName(name).isPresent()) {
+            throw new ConflictException("Ja existe um instrutor com esse nome");
         }
-        
         Instructor instructor = new Instructor(name, license, specialization);
-        return instructorDAO.insert(instructor);
+        return instructorRepository.save(instructor);
     }
-    
-    public Instructor atualizarInstrutor(Integer id, String name, String license, 
-                                        String specialization, String email, String phone) {
-        if (id == null || id <= 0) {
-            throw new IllegalArgumentException("ID deve ser válido");
+
+    public Instructor saveInstrutor(Instructor instructor) {
+        if (instructor.getName() == null || instructor.getName().trim().isEmpty()) {
+            throw new IllegalArgumentException("Nome e obrigatorio");
         }
-        
-        Optional<Instructor> opt = instructorDAO.findById(id);
-        if (opt.isEmpty()) {
-            throw new IllegalArgumentException("Instrutor não encontrado");
+        BusinessRules.requirePositiveOrZero("Horas de voo", instructor.getFlightHours());
+        if (instructor.getStatus() != null) {
+            instructor.setStatus(BusinessRules.requireAllowed("Status", instructor.getStatus(), BusinessRules.INSTRUCTOR_STATUSES));
         }
-        
-        Instructor instructor = opt.get();
-        
-        if (name != null && !name.trim().isEmpty()) {
-            instructor.setName(name);
+        return instructorRepository.save(instructor);
+    }
+
+    public Instructor updateInstrutor(Integer id, Instructor updates) {
+        Instructor instructor = requireInstrutor(id);
+        BusinessRules.requirePositiveOrZero("Horas de voo", updates.getFlightHours());
+        if (updates.getName() != null && !updates.getName().trim().isEmpty()) instructor.setName(updates.getName());
+        if (updates.getLicense() != null && !updates.getLicense().trim().isEmpty()) instructor.setLicense(updates.getLicense());
+        if (updates.getSpecialization() != null) instructor.setSpecialization(updates.getSpecialization());
+        if (updates.getFlightHours() != null) instructor.setFlightHours(updates.getFlightHours());
+        if (updates.getStatus() != null) {
+            instructor.setStatus(BusinessRules.requireAllowed("Status", updates.getStatus(), BusinessRules.INSTRUCTOR_STATUSES));
         }
-        if (license != null && !license.trim().isEmpty()) {
-            instructor.setLicense(license);
-        }
+        if (updates.getEmail() != null) instructor.setEmail(updates.getEmail());
+        if (updates.getPhone() != null) instructor.setPhone(updates.getPhone());
+        return instructorRepository.save(instructor);
+    }
+
+    public Instructor atualizarInstrutor(Integer id, String name, String license,
+                                         String specialization, String email, String phone) {
+        Instructor instructor = requireInstrutor(id);
+        if (name != null && !name.trim().isEmpty()) instructor.setName(name);
+        if (license != null && !license.trim().isEmpty()) instructor.setLicense(license);
         if (specialization != null) instructor.setSpecialization(specialization);
         if (email != null) instructor.setEmail(email);
         if (phone != null) instructor.setPhone(phone);
-        
-        return instructorDAO.update(instructor);
+        return instructorRepository.save(instructor);
     }
-    
+
     public void atualizarStatus(Integer id, String status) {
-        if (id == null || id <= 0) {
-            throw new IllegalArgumentException("ID deve ser válido");
-        }
-        
-        Optional<Instructor> opt = instructorDAO.findById(id);
-        if (opt.isEmpty()) {
-            throw new IllegalArgumentException("Instrutor não encontrado");
-        }
-        
-        Instructor instructor = opt.get();
-        instructor.setStatus(status);
-        instructorDAO.update(instructor);
+        Instructor instructor = requireInstrutor(id);
+        instructor.setStatus(BusinessRules.requireAllowed("Status", status, BusinessRules.INSTRUCTOR_STATUSES));
+        instructorRepository.save(instructor);
     }
-    
+
     public void eliminarInstrutor(Integer id) {
-        if (id == null || id <= 0) {
-            throw new IllegalArgumentException("ID deve ser válido");
+        validateId(id);
+        if (!instructorRepository.existsById(id)) {
+            throw new EntityNotFoundException("Instrutor nao encontrado");
         }
-        if (instructorDAO.findById(id).isEmpty()) {
-            throw new IllegalArgumentException("Instrutor não encontrado");
-        }
-        instructorDAO.delete(id);
+        instructorRepository.deleteById(id);
     }
-    
+
     public long contarIntrutores() {
-        return instructorDAO.count();
+        return instructorRepository.count();
+    }
+
+    private static void validateId(Integer id) {
+        if (id == null || id <= 0) {
+            throw new IllegalArgumentException("ID deve ser valido");
+        }
     }
 }

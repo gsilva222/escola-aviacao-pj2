@@ -9,7 +9,7 @@ import pt.ipvc.estg.entities.Student;
 import pt.ipvc.estg.entities.UserAccount;
 import pt.ipvc.estg.web.repositories.StudentRepository;
 import pt.ipvc.estg.web.repositories.UserAccountRepository;
-import pt.ipvc.estg.web.services.AuthService;
+import pt.ipvc.estg.services.AccountService;
 
 import java.util.List;
 
@@ -58,7 +58,7 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private void seedAdminIfMissing() {
-        if (userAccountRepository.countByRole(AuthService.ROLE_ADMIN) > 0) {
+        if (userAccountRepository.countByRole(AccountService.ROLE_ADMIN) > 0) {
             return;
         }
         if (userAccountRepository.findByUsernameIgnoreCase(adminUsername).isPresent()) {
@@ -68,7 +68,7 @@ public class DataSeeder implements CommandLineRunner {
         UserAccount admin = new UserAccount();
         admin.setUsername(adminUsername);
         admin.setPasswordHash(passwordEncoder.encode(adminPassword));
-        admin.setRole(AuthService.ROLE_ADMIN);
+        admin.setRole(AccountService.ROLE_ADMIN);
         admin.setActive(true);
         userAccountRepository.save(admin);
     }
@@ -89,7 +89,7 @@ public class DataSeeder implements CommandLineRunner {
             UserAccount account = new UserAccount();
             account.setUsername(student.getEmail());
             account.setPasswordHash(passwordEncoder.encode(studentPassword));
-            account.setRole(AuthService.ROLE_STUDENT);
+            account.setRole(AccountService.ROLE_STUDENT);
             account.setActive(true);
             account.setStudent(student);
             userAccountRepository.save(account);

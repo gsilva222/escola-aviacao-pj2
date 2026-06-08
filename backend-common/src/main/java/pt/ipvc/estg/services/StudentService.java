@@ -1,210 +1,268 @@
 package pt.ipvc.estg.services;
 
-import pt.ipvc.estg.dal.mock.StudentDAOMock;
-import pt.ipvc.estg.dal.mock.MockDataSeeder;
-import pt.ipvc.estg.entities.Student;
+import pt.ipvc.estg.domain.PageQuery;
+import pt.ipvc.estg.domain.PageResult;
 import pt.ipvc.estg.entities.Course;
+import pt.ipvc.estg.entities.Instructor;
+import pt.ipvc.estg.entities.Student;
+import pt.ipvc.estg.exception.ConflictException;
+import pt.ipvc.estg.exception.EntityNotFoundException;
+import pt.ipvc.estg.repositories.CourseRepository;
+import pt.ipvc.estg.repositories.InstructorRepository;
+import pt.ipvc.estg.repositories.StudentRepository;
+import pt.ipvc.estg.validation.BusinessRules;
+
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Serviço de Student - Lógica de negócio para Estudantes
- */
 public class StudentService {
-    
-    private final StudentDAOMock studentDAO;
-    
+
+    private final StudentRepository studentRepository;
+    private final CourseRepository courseRepository;
+    private final InstructorRepository instructorRepository;
+
+    public StudentService(StudentRepository studentRepository,
+                          CourseRepository courseRepository,
+                          InstructorRepository instructorRepository) {
+        this.studentRepository = studentRepository;
+        this.courseRepository = courseRepository;
+        this.instructorRepository = instructorRepository;
+    }
+
     public StudentService() {
-        MockDataSeeder.seedAllData();
-        this.studentDAO = new StudentDAOMock();
+        this(
+                pt.ipvc.estg.bootstrap.MockServices.getInstance().studentRepository(),
+                pt.ipvc.estg.bootstrap.MockServices.getInstance().courseRepository(),
+                pt.ipvc.estg.bootstrap.MockServices.getInstance().instructorRepository()
+        );
     }
-    
+
     public Optional<Student> getEstudante(Integer id) {
-        if (id == null || id <= 0) {
-            throw new IllegalArgumentException("ID deve ser válido");
-        }
-        return studentDAO.findById(id);
+        validateId(id);
+        return studentRepository.findById(id);
     }
-    
+
+    public Student requireEstudante(Integer id) {
+        return getEstudante(id).orElseThrow(() -> new EntityNotFoundException("Estudante nao encontrado"));
+    }
+
     public Optional<Student> getEstudantePorEmail(String email) {
         if (email == null || email.trim().isEmpty()) {
-            throw new IllegalArgumentException("Email deve ser válido");
+            throw new IllegalArgumentException("Email deve ser valido");
         }
-        return studentDAO.findByEmail(email);
+        return studentRepository.findByEmail(email);
     }
-    
+
     public List<Student> getAllEstudantes() {
-        return studentDAO.findAll();
+        return studentRepository.findAll();
     }
-    
-    public List<Student> getEstudantesPorCurso(Integer courseId) {
-        if (courseId == null || courseId <= 0) {
-            throw new IllegalArgumentException("Course ID deve ser válido");
+
+    public PageResult<Student> listEstudantes(PageQuery query, Integer courseId, String status) {
+        if (courseId != null) {
+            return studentRepository.findByCourse(courseId, query);
         }
-        return studentDAO.findByCourse(courseId);
+        if (status != null && !status.trim().isEmpty()) {
+            return studentRepository.findByStatus(status, query);
+        }
+        return studentRepository.findAll(query);
     }
-    
+
+    public List<Student> getEstudantesPorCurso(Integer courseId) {
+        validateId(courseId);
+        return studentRepository.findByCourse(courseId);
+    }
+
     public List<Student> getEstudantesPorStatus(String status) {
         if (status == null || status.trim().isEmpty()) {
-            throw new IllegalArgumentException("Status deve ser válido");
+            throw new IllegalArgumentException("Status deve ser valido");
         }
-        return studentDAO.findByStatus(status);
+        return studentRepository.findByStatus(status);
     }
-    
+
     public Student criarEstudante(String name, String email, Course course) {
         if (name == null || name.trim().isEmpty()) {
-            throw new IllegalArgumentException("Nome é obrigatório");
+            throw new IllegalArgumentException("Nome e obrigatorio");
         }
         if (email == null || email.trim().isEmpty()) {
-            throw new IllegalArgumentException("Email é obrigatório");
+            throw new IllegalArgumentException("Email e obrigatorio");
         }
         if (course == null) {
-            throw new IllegalArgumentException("Curso é obrigatório");
+            throw new IllegalArgumentException("Curso e obrigatorio");
         }
-        
-        if (studentDAO.findByEmail(email).isPresent()) {
-            throw new IllegalArgumentException("Já existe um estudante com esse email");
+        if (studentRepository.findByEmail(email).isPresent()) {
+            throw new ConflictException("Ja existe um estudante com esse email");
         }
-        
         Student student = new Student(name, email, course);
-        return studentDAO.insert(student);
+        return studentRepository.save(student);
     }
-    
-    public Student atualizarEstudante(Integer id, String name, String email, 
-                                     String phone, String nif, LocalDate birthdate) {
-        if (id == null || id <= 0) {
-            throw new IllegalArgumentException("ID deve ser válido");
+
+    public Student createEstudante(Student student) {
+        validateStudentForSave(student, null);
+        if (student.getCourse() != null && student.getCourse().getId() != null) {
+            Course course = courseRepository.findById(student.getCourse().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Curso nao encontrado"));
+            student.setCourse(course);
         }
-        
-        Optional<Student> opt = studentDAO.findById(id);
-        if (opt.isEmpty()) {
-            throw new IllegalArgumentException("Estudante não encontrado");
+        resolveInstructor(student);
+        if (student.getName() != null) {
+            student.setAvatar(generateAvatar(student.getName()));
         }
-        
-        Student student = opt.get();
-        
-        if (name != null && !name.trim().isEmpty()) {
-            student.setName(name);
-            student.setAvatar(generateAvatar(name));
+        return studentRepository.save(student);
+    }
+
+    public Student updateEstudante(Integer id, Student updates) {
+        validateId(id);
+        Student student = requireEstudante(id);
+        validateStudentForSave(updates, id);
+
+        if (updates.getName() != null && !updates.getName().trim().isEmpty()) {
+            student.setName(updates.getName());
+            student.setAvatar(generateAvatar(updates.getName()));
         }
-        
-        if (email != null && !email.trim().isEmpty()) {
-            Optional<Student> existente = studentDAO.findByEmail(email);
-            if (existente.isPresent() && !existente.get().getId().equals(id)) {
-                throw new IllegalArgumentException("Já existe outro estudante com esse email");
-            }
-            student.setEmail(email);
+        if (updates.getEmail() != null && !updates.getEmail().trim().isEmpty()) {
+            studentRepository.findByEmail(updates.getEmail())
+                    .filter(existing -> !existing.getId().equals(id))
+                    .ifPresent(existing -> {
+                        throw new ConflictException("Ja existe outro estudante com esse email");
+                    });
+            student.setEmail(updates.getEmail());
         }
-        
-        if (phone != null) student.setPhone(phone);
-        if (nif != null) student.setNif(nif);
-        if (birthdate != null) student.setBirthdate(birthdate);
-        
-        return studentDAO.update(student);
+        if (updates.getPhone() != null) student.setPhone(updates.getPhone());
+        if (updates.getNif() != null) student.setNif(updates.getNif());
+        if (updates.getBirthdate() != null) student.setBirthdate(updates.getBirthdate());
+        if (updates.getAddress() != null) student.setAddress(updates.getAddress());
+        if (updates.getNationality() != null) student.setNationality(updates.getNationality());
+        if (updates.getStatus() != null) student.setStatus(updates.getStatus());
+        if (updates.getEnrollmentDate() != null) student.setEnrollmentDate(updates.getEnrollmentDate());
+        if (updates.getProgress() != null) student.setProgress(updates.getProgress());
+        if (updates.getFlightHours() != null) student.setFlightHours(updates.getFlightHours());
+        if (updates.getTheoreticalHours() != null) student.setTheoreticalHours(updates.getTheoreticalHours());
+        if (updates.getPaymentStatus() != null) student.setPaymentStatus(updates.getPaymentStatus());
+        if (updates.getCourse() != null && updates.getCourse().getId() != null) {
+            Course course = courseRepository.findById(updates.getCourse().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Curso nao encontrado"));
+            student.setCourse(course);
+        }
+        if (updates.getInstructor() != null) {
+            resolveInstructorUpdate(student, updates.getInstructor().getId());
+        }
+        return studentRepository.save(student);
+    }
+
+    public Student atualizarEstudante(Integer id, String name, String email,
+                                      String phone, String nif, LocalDate birthdate) {
+        Student updates = new Student();
+        updates.setName(name);
+        updates.setEmail(email);
+        updates.setPhone(phone);
+        updates.setNif(nif);
+        updates.setBirthdate(birthdate);
+        return updateEstudante(id, updates);
     }
 
     public Student atualizarEstudanteCompleto(Integer id, String name, String email,
-                                             String phone, String nif, LocalDate birthdate,
-                                             String address, String nationality, Course course,
-                                             String status, LocalDate enrollmentDate,
-                                             Integer progress, Double flightHours,
-                                             Double theoreticalHours, String paymentStatus) {
+                                              String phone, String nif, LocalDate birthdate,
+                                              String address, String nationality, Course course,
+                                              String status, LocalDate enrollmentDate,
+                                              Integer progress, Double flightHours,
+                                              Double theoreticalHours, String paymentStatus) {
+        Student updates = new Student();
+        updates.setName(name);
+        updates.setEmail(email);
+        updates.setPhone(phone);
+        updates.setNif(nif);
+        updates.setBirthdate(birthdate);
+        updates.setAddress(address);
+        updates.setNationality(nationality);
+        updates.setCourse(course);
+        updates.setStatus(status);
+        updates.setEnrollmentDate(enrollmentDate);
+        updates.setProgress(progress);
+        updates.setFlightHours(flightHours);
+        updates.setTheoreticalHours(theoreticalHours);
+        updates.setPaymentStatus(paymentStatus);
+        return updateEstudante(id, updates);
+    }
+
+    public void atualizarProgresso(Integer id, Integer progress) {
+        BusinessRules.requirePercent("Progresso", progress);
+        Student student = requireEstudante(id);
+        student.setProgress(progress);
+        studentRepository.save(student);
+    }
+
+    public void atualizarStatus(Integer id, String status) {
+        Student student = requireEstudante(id);
+        student.setStatus(BusinessRules.requireAllowed("Status", status, BusinessRules.STUDENT_STATUSES));
+        studentRepository.save(student);
+    }
+
+    public void eliminarEstudante(Integer id) {
+        validateId(id);
+        if (!studentRepository.existsById(id)) {
+            throw new EntityNotFoundException("Estudante nao encontrado");
+        }
+        studentRepository.deleteById(id);
+    }
+
+    public long contarEstudantes() {
+        return studentRepository.count();
+    }
+
+    public Student updateProfile(Integer id, String phone, String address, String nationality) {
+        Student student = requireEstudante(id);
+        if (phone != null) student.setPhone(phone);
+        if (address != null) student.setAddress(address);
+        if (nationality != null) student.setNationality(nationality);
+        return studentRepository.save(student);
+    }
+
+    private void validateStudentForSave(Student student, Integer existingId) {
+        BusinessRules.validatePortugueseNif(student.getNif());
+        BusinessRules.validateAdultBirthdate(student.getBirthdate());
+        BusinessRules.requirePercent("Progresso", student.getProgress());
+        BusinessRules.requirePositiveOrZero("Horas de voo", student.getFlightHours());
+        BusinessRules.requirePositiveOrZero("Horas teoricas", student.getTheoreticalHours());
+        if (student.getEmail() != null) {
+            studentRepository.findByEmail(student.getEmail())
+                    .filter(existing -> existingId == null || !existing.getId().equals(existingId))
+                    .ifPresent(existing -> {
+                        throw new ConflictException("Ja existe um estudante com esse email");
+                    });
+        }
+        if (student.getStatus() != null) {
+            student.setStatus(BusinessRules.requireAllowed("Status", student.getStatus(), BusinessRules.STUDENT_STATUSES));
+        }
+        if (student.getPaymentStatus() != null) {
+            student.setPaymentStatus(BusinessRules.requireAllowed(
+                    "PaymentStatus", student.getPaymentStatus(), BusinessRules.STUDENT_PAYMENT_STATUSES));
+        }
+    }
+
+    private void resolveInstructor(Student student) {
+        if (student.getInstructor() == null || student.getInstructor().getId() == null) {
+            return;
+        }
+        resolveInstructorUpdate(student, student.getInstructor().getId());
+    }
+
+    private void resolveInstructorUpdate(Student student, Integer instructorId) {
+        if (instructorId == null) {
+            return;
+        }
+        Instructor instructor = instructorRepository.findById(instructorId)
+                .orElseThrow(() -> new EntityNotFoundException("Instrutor nao encontrado"));
+        student.setInstructor(instructor);
+    }
+
+    private static void validateId(Integer id) {
         if (id == null || id <= 0) {
             throw new IllegalArgumentException("ID deve ser valido");
         }
-
-        Optional<Student> opt = studentDAO.findById(id);
-        if (opt.isEmpty()) {
-            throw new IllegalArgumentException("Estudante nao encontrado");
-        }
-
-        Student student = opt.get();
-
-        if (name != null && !name.trim().isEmpty()) {
-            student.setName(name);
-            student.setAvatar(generateAvatar(name));
-        }
-
-        if (email != null && !email.trim().isEmpty()) {
-            Optional<Student> existente = studentDAO.findByEmail(email);
-            if (existente.isPresent() && !existente.get().getId().equals(id)) {
-                throw new IllegalArgumentException("Ja existe outro estudante com esse email");
-            }
-            student.setEmail(email);
-        }
-
-        if (phone != null) student.setPhone(phone);
-        if (nif != null) student.setNif(nif);
-        if (birthdate != null) student.setBirthdate(birthdate);
-        if (address != null) student.setAddress(address);
-        if (nationality != null) student.setNationality(nationality);
-        if (course != null) student.setCourse(course);
-        if (status != null) student.setStatus(status);
-        if (enrollmentDate != null) student.setEnrollmentDate(enrollmentDate);
-
-        if (progress != null) {
-            if (progress < 0 || progress > 100) {
-                throw new IllegalArgumentException("Progresso deve estar entre 0-100");
-            }
-            student.setProgress(progress);
-        }
-
-        if (flightHours != null) student.setFlightHours(flightHours);
-        if (theoreticalHours != null) student.setTheoreticalHours(theoreticalHours);
-        if (paymentStatus != null) student.setPaymentStatus(paymentStatus);
-
-        return studentDAO.update(student);
     }
-    
-    public void atualizarProgresso(Integer id, Integer progress) {
-        if (id == null || id <= 0) {
-            throw new IllegalArgumentException("ID deve ser válido");
-        }
-        if (progress == null || progress < 0 || progress > 100) {
-            throw new IllegalArgumentException("Progresso deve estar entre 0-100");
-        }
-        
-        Optional<Student> opt = studentDAO.findById(id);
-        if (opt.isEmpty()) {
-            throw new IllegalArgumentException("Estudante não encontrado");
-        }
-        
-        Student student = opt.get();
-        student.setProgress(progress);
-        studentDAO.update(student);
-    }
-    
-    public void atualizarStatus(Integer id, String status) {
-        if (id == null || id <= 0) {
-            throw new IllegalArgumentException("ID deve ser válido");
-        }
-        
-        Optional<Student> opt = studentDAO.findById(id);
-        if (opt.isEmpty()) {
-            throw new IllegalArgumentException("Estudante não encontrado");
-        }
-        
-        Student student = opt.get();
-        student.setStatus(status);
-        studentDAO.update(student);
-    }
-    
-    public void eliminarEstudante(Integer id) {
-        if (id == null || id <= 0) {
-            throw new IllegalArgumentException("ID deve ser válido");
-        }
-        if (studentDAO.findById(id).isEmpty()) {
-            throw new IllegalArgumentException("Estudante não encontrado");
-        }
-        studentDAO.delete(id);
-    }
-    
-    public long contarEstudantes() {
-        return studentDAO.count();
-    }
-    
-    private String generateAvatar(String name) {
+
+    static String generateAvatar(String name) {
         String[] parts = name.split(" ");
         StringBuilder sb = new StringBuilder();
         for (String part : parts) {

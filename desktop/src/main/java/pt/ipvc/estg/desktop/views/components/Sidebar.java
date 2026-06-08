@@ -1,5 +1,7 @@
 package pt.ipvc.estg.desktop.views.components;
 
+import pt.ipvc.estg.desktop.services.DesktopAuthService;
+import pt.ipvc.estg.desktop.security.RoleMenuPolicy;
 import pt.ipvc.estg.desktop.views.LoginFrame;
 
 import javax.swing.*;
@@ -9,6 +11,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 public class Sidebar extends JPanel {
 
@@ -24,11 +27,19 @@ public class Sidebar extends JPanel {
     }
 
     private final NavigationListener listener;
+    private final String userRole;
+    private final String displayUsername;
     private final Map<String, NavButton> navButtons = new LinkedHashMap<>();
     private String activePage = "dashboard";
 
     public Sidebar(NavigationListener listener) {
+        this(listener, "Administrador", "Admin. Geral");
+    }
+
+    public Sidebar(NavigationListener listener, String userRole, String displayUsername) {
         this.listener = listener;
+        this.userRole = userRole != null ? userRole : "Administrador";
+        this.displayUsername = displayUsername != null ? displayUsername : "Utilizador";
 
         setLayout(new BorderLayout());
         setBackground(DARK_BG);
@@ -97,15 +108,17 @@ public class Sidebar extends JPanel {
         navLabel.setFont(new Font("Inter", Font.BOLD, 8));
         panel.add(navLabel);
 
-        addNavButton(panel, "dashboard", "Dashboard", "\u2318");
-        addNavButton(panel, "students", "Alunos", "\u25CE");
-        addNavButton(panel, "courses", "Cursos", "\u25A7");
-        addNavButton(panel, "flights", "Agendamento de Voos", "\u2708");
-        addNavButton(panel, "aircraft", "Aeronaves", "\u25CC");
-        addNavButton(panel, "maintenance", "Manutencao", "\u2699");
-        addNavButton(panel, "evaluations", "Avaliacoes", "\u25A4");
-        addNavButton(panel, "payments", "Pagamentos", "\u25AC");
-        addNavButton(panel, "reports", "Relatorios", "\u25E7");
+        Set<String> allowed = RoleMenuPolicy.allowedPages(userRole);
+        if (allowed.contains("dashboard")) addNavButton(panel, "dashboard", "Dashboard", "\u2318");
+        if (allowed.contains("students")) addNavButton(panel, "students", "Alunos", "\u25CE");
+        if (allowed.contains("courses")) addNavButton(panel, "courses", "Cursos", "\u25A7");
+        if (allowed.contains("flights")) addNavButton(panel, "flights", "Agendamento de Voos", "\u2708");
+        if (allowed.contains("aircraft")) addNavButton(panel, "aircraft", "Aeronaves", "\u25CC");
+        if (allowed.contains("instructors")) addNavButton(panel, "instructors", "Instrutores", "\u25C9");
+        if (allowed.contains("maintenance")) addNavButton(panel, "maintenance", "Manutencao", "\u2699");
+        if (allowed.contains("evaluations")) addNavButton(panel, "evaluations", "Avaliacoes", "\u25A4");
+        if (allowed.contains("payments")) addNavButton(panel, "payments", "Pagamentos", "\u25AC");
+        if (allowed.contains("reports")) addNavButton(panel, "reports", "Relatorios", "\u25E7");
 
         panel.add(Box.createVerticalGlue());
         return panel;
@@ -132,7 +145,10 @@ public class Sidebar extends JPanel {
         userCard.setBorder(new EmptyBorder(10, 10, 10, 10));
         userCard.setPreferredSize(new Dimension(200, 48));
 
-        JLabel avatar = new JLabel("AD", SwingConstants.CENTER);
+        String initials = displayUsername.length() >= 2
+                ? displayUsername.substring(0, 2).toUpperCase()
+                : "US";
+        JLabel avatar = new JLabel(initials, SwingConstants.CENTER);
         avatar.setPreferredSize(new Dimension(28, 28));
         avatar.setOpaque(true);
         avatar.setBackground(BLUE_PRIMARY);
@@ -142,10 +158,10 @@ public class Sidebar extends JPanel {
         JPanel text = new JPanel();
         text.setOpaque(false);
         text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
-        JLabel name = new JLabel("Admin. Geral");
+        JLabel name = new JLabel(displayUsername.length() > 16 ? displayUsername.substring(0, 16) : displayUsername);
         name.setForeground(Color.WHITE);
         name.setFont(new Font("Inter", Font.BOLD, 10));
-        JLabel role = new JLabel("Administrador");
+        JLabel role = new JLabel(userRole);
         role.setForeground(new Color(96, 165, 250));
         role.setFont(new Font("Inter", Font.PLAIN, 9));
         text.add(name);
@@ -176,6 +192,7 @@ public class Sidebar extends JPanel {
                 JOptionPane.YES_NO_OPTION
         );
         if (result == JOptionPane.YES_OPTION) {
+            DesktopAuthService.logout();
             JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(this);
             if (frame != null) {
                 frame.dispose();

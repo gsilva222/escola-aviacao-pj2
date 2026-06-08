@@ -50,6 +50,7 @@ class WebSmokeIntegrationTest {
         assertThat(get(url("/fo/documents"), studentToken).getStatusCode()).isEqualTo(HttpStatus.OK);
 
         assertThat(get(url("/bo/reports/summary"), adminToken).getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(get(url("/bo/dashboard"), adminToken).getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(get(url("/bo/payments/summary"), adminToken).getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(get(url("/bo/payments/summary?studentId=" + studentId), adminToken).getStatusCode())
                 .isEqualTo(HttpStatus.OK);

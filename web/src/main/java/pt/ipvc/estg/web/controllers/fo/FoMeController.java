@@ -2,11 +2,10 @@ package pt.ipvc.estg.web.controllers.fo;
 
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
-import pt.ipvc.estg.entities.Student;
+import pt.ipvc.estg.services.StudentService;
 import pt.ipvc.estg.web.dto.FoProfileUpdateRequest;
 import pt.ipvc.estg.web.dto.StudentResponse;
 import pt.ipvc.estg.web.mappers.StudentMapper;
-import pt.ipvc.estg.web.repositories.StudentRepository;
 import pt.ipvc.estg.web.services.StudentScopeService;
 
 @RestController
@@ -14,11 +13,11 @@ import pt.ipvc.estg.web.services.StudentScopeService;
 public class FoMeController {
 
     private final StudentScopeService studentScopeService;
-    private final StudentRepository studentRepository;
+    private final StudentService studentService;
 
-    public FoMeController(StudentScopeService studentScopeService, StudentRepository studentRepository) {
+    public FoMeController(StudentScopeService studentScopeService, StudentService studentService) {
         this.studentScopeService = studentScopeService;
-        this.studentRepository = studentRepository;
+        this.studentService = studentService;
     }
 
     @GetMapping
@@ -28,16 +27,9 @@ public class FoMeController {
 
     @PutMapping
     public StudentResponse updateProfile(@Valid @RequestBody FoProfileUpdateRequest request) {
-        Student student = studentScopeService.requireCurrentStudent();
-        if (request.phone() != null) {
-            student.setPhone(request.phone());
-        }
-        if (request.address() != null) {
-            student.setAddress(request.address());
-        }
-        if (request.nationality() != null) {
-            student.setNationality(request.nationality());
-        }
-        return StudentMapper.toResponse(studentRepository.save(student));
+        var student = studentScopeService.requireCurrentStudent();
+        var updated = studentService.updateProfile(
+                student.getId(), request.phone(), request.address(), request.nationality());
+        return StudentMapper.toResponse(updated);
     }
 }
