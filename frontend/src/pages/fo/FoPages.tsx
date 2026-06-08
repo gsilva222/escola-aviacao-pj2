@@ -94,7 +94,7 @@ export function FoHoursPage() {
     <>
       <PageHeader title="Horas de voo" />
       <div className="grid grid-3">
-        <KpiCard label="Completadas" value={`${data.completedHours.toFixed(1)}h`} />
+        <KpiCard label="Completadas" value={`${data.totalCompletedHours.toFixed(1)}h`} />
         <KpiCard label="Locais" value={`${data.localHours.toFixed(1)}h`} />
         <KpiCard label="Navegação" value={`${data.navigationHours.toFixed(1)}h`} />
         <KpiCard label="Total voos" value={data.totalFlights} />

@@ -73,11 +73,16 @@ export function BoCrudPage({ config }: { config: EntityConfig }) {
     setLoading(true);
     setError(null);
     try {
-      const data = await api<Page<Record<string, unknown>>>(
+      const data = await api<Page<Record<string, unknown>> | Record<string, unknown>[]>(
         `${config.path}?page=${page}&size=${pageSize}&sort=id,desc`,
       );
-      setRows(data.content);
-      setTotal(data.totalElements);
+      if (Array.isArray(data)) {
+        setRows(data);
+        setTotal(data.length);
+      } else {
+        setRows(data.content);
+        setTotal(data.totalElements);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar');
     } finally {

@@ -152,10 +152,11 @@ export interface FoDashboard {
 }
 
 export interface FoHoursSummary {
-  completedHours: number;
+  totalCompletedHours: number;
   localHours: number;
   navigationHours: number;
   totalFlights: number;
+  monthlyAverageHours: number;
   requiredHours: number;
   remainingHours: number;
   progressPercent: number;

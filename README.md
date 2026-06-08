@@ -59,8 +59,12 @@ psql -d aeroschool -f web/src/main/resources/db/schema-postgresql.sql
 **Terminal 2 — API** (perfil `dev`, sem variáveis de ambiente):
 
 ```bash
-mvn -pl web -am spring-boot:run -Dspring-boot.run.profiles=dev
+mvn -pl web -am install -DskipTests
+cd web
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
+
+No PowerShell, usar aspas no argumento do perfil: `mvn spring-boot:run "-Dspring-boot.run.profiles=dev"`
 
 O ficheiro `web/src/main/resources/application-dev.properties` já define ligação à BD, JWT e seed.
 
@@ -120,15 +124,22 @@ psql -d aeroschool -f web/src/main/resources/db/schema-postgresql.sql
 **Recomendado** — perfil de desenvolvimento (valores pré-configurados):
 
 ```bash
-mvn -pl web -am spring-boot:run -Dspring-boot.run.profiles=dev
+mvn -pl web -am install -DskipTests
+cd web
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
+
+No PowerShell: `mvn spring-boot:run "-Dspring-boot.run.profiles=dev"`. O comando `mvn -pl web -am spring-boot:run` a partir da raiz falha no Windows porque o Maven tenta arrancar o projeto pai em vez do módulo `web`.
 
 **Alternativa** — variáveis de ambiente (ver `.env.example`):
 
 ```bash
+mvn -pl web -am install -DskipTests
+cd web
+
 # Linux/macOS
-export $(grep -v '^#' .env | xargs)
-mvn -pl web -am spring-boot:run
+export $(grep -v '^#' ../.env | xargs)
+mvn spring-boot:run
 
 # Windows PowerShell (exemplo)
 $env:DB_URL = "jdbc:postgresql://localhost:5432/aeroschool"
@@ -137,7 +148,7 @@ $env:DB_PASSWORD = "aeroschool"
 $env:JWT_SECRET = "change_me_in_production_min_32_chars!!"
 $env:SEED_ADMIN_PASS = "admin123"
 $env:SEED_STUDENT_PASS = "aluno123"
-mvn -pl web -am spring-boot:run
+mvn spring-boot:run
 ```
 
 #### 3. Frontend
