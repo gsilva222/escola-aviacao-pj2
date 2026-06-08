@@ -1,6 +1,14 @@
-# Escola de Aviação — Parte Web
+# Escola de Aviação
 
-API REST Spring Boot + frontend React para gestão da escola de aviação.
+Sistema de gestão da escola de aviação com três componentes:
+
+| Módulo | Descrição |
+|--------|-----------|
+| **web** | API REST Spring Boot (porta 8080, contexto `/api`) |
+| **frontend** | Interface React (porta 5173 em desenvolvimento) |
+| **desktop** | Aplicação Swing que consome a API |
+
+Módulos partilhados: `shared` (entidades/DAL) e `backend-common` (serviços).
 
 ## Requisitos
 
@@ -9,40 +17,54 @@ API REST Spring Boot + frontend React para gestão da escola de aviação.
 - Node.js 20+ (frontend)
 - PostgreSQL 16 (ou Docker)
 
-## Arranque rápido com Docker
+## Credenciais de teste
+
+- **BackOffice:** `admin` / `admin123`
+- **Alunos:** email do aluno / `aluno123`
+
+## Arranque completo (web + desktop)
+
+Para ter tudo a funcionar em conjunto, são necessários **3 terminais** (com a API a correr).
+
+### Opção A — Web com Docker + desktop local
+
+**Terminal 1 — stack web:**
 
 ```bash
-cp .env.example .env
+cp .env.example .env          # Windows: Copy-Item .env.example .env
 docker compose up --build
 ```
 
-| Serviço   | URL                          |
-|-----------|------------------------------|
-| API       | http://localhost:8080/api    |
-| Swagger   | http://localhost:8080/api/swagger |
-| Health    | http://localhost:8080/api/actuator/health |
-| Frontend  | http://localhost:5173        |
+**Terminal 2 — desktop** (com a API já disponível em `http://localhost:8080/api`):
 
-**Credenciais seed:** `admin` / `admin123` (BackOffice) · alunos: email do aluno / `aluno123`
+```bash
+mvn -pl desktop -am exec:java
+```
 
-## Arranque local (sem Docker)
+### Opção B — Tudo local (sem Docker para API/frontend)
 
-### 1. Base de dados
+**Terminal 1 — base de dados** (só PostgreSQL via Docker):
+
+```bash
+docker compose up postgres -d
+```
+
+Alternativa sem Docker: criar a BD manualmente:
 
 ```bash
 createdb aeroschool
 psql -d aeroschool -f web/src/main/resources/db/schema-postgresql.sql
 ```
 
-### 2. API
-
-Defina as variáveis (ver `.env.example`) e execute:
+**Terminal 2 — API** (perfil `dev`, sem variáveis de ambiente):
 
 ```bash
-mvn -pl web -am spring-boot:run
+mvn -pl web -am spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-### 3. Frontend
+O ficheiro `web/src/main/resources/application-dev.properties` já define ligação à BD, JWT e seed.
+
+**Terminal 3 — frontend:**
 
 ```bash
 cd frontend
@@ -50,7 +72,116 @@ npm install
 npm run dev
 ```
 
-Abra http://localhost:5173
+Abrir http://localhost:5173
+
+**Terminal 4 — desktop:**
+
+```bash
+mvn -pl desktop -am exec:java
+```
+
+---
+
+## Web
+
+### Arranque rápido com Docker
+
+```bash
+cp .env.example .env          # Windows: Copy-Item .env.example .env
+docker compose up --build
+```
+
+| Serviço   | URL |
+|-----------|-----|
+| API       | http://localhost:8080/api |
+| Swagger   | http://localhost:8080/api/swagger |
+| Health    | http://localhost:8080/api/actuator/health |
+| Frontend  | http://localhost:5173 |
+
+Serviços definidos em `docker-compose.yml`: `postgres`, `api`, `frontend`.
+
+### Arranque local (sem Docker)
+
+#### 1. Base de dados
+
+```bash
+docker compose up postgres -d
+```
+
+Ou, com PostgreSQL instalado localmente:
+
+```bash
+createdb aeroschool
+psql -d aeroschool -f web/src/main/resources/db/schema-postgresql.sql
+```
+
+#### 2. API
+
+**Recomendado** — perfil de desenvolvimento (valores pré-configurados):
+
+```bash
+mvn -pl web -am spring-boot:run -Dspring-boot.run.profiles=dev
+```
+
+**Alternativa** — variáveis de ambiente (ver `.env.example`):
+
+```bash
+# Linux/macOS
+export $(grep -v '^#' .env | xargs)
+mvn -pl web -am spring-boot:run
+
+# Windows PowerShell (exemplo)
+$env:DB_URL = "jdbc:postgresql://localhost:5432/aeroschool"
+$env:DB_USER = "aeroschool"
+$env:DB_PASSWORD = "aeroschool"
+$env:JWT_SECRET = "change_me_in_production_min_32_chars!!"
+$env:SEED_ADMIN_PASS = "admin123"
+$env:SEED_STUDENT_PASS = "aluno123"
+mvn -pl web -am spring-boot:run
+```
+
+#### 3. Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Em desenvolvimento, o Vite (`frontend/vite.config.ts`) faz proxy de `/api` para `http://localhost:8080`. A variável `VITE_API_BASE_URL` (ver `.env.example`) só é necessária em builds de produção.
+
+---
+
+## Desktop
+
+Aplicação Swing em `desktop/`. Liga-se à API REST; o URL base é configurável em `desktop/src/main/resources/aeroschool.properties` (por defeito `http://localhost:8080/api`).
+
+### Arrancar
+
+Com a API a correr:
+
+```bash
+mvn -pl desktop -am exec:java
+```
+
+### Alternativa (JAR)
+
+```bash
+mvn -pl desktop -am package -DskipTests
+java -jar desktop/target/aeroschool-desktop.jar
+```
+
+### URL da API
+
+Para apontar para outro servidor:
+
+```bash
+mvn -pl desktop -am exec:java -Daeroschool.api.baseUrl=http://localhost:8080/api
+```
+
+Ou editar `aeroschool.properties` na pasta de arranque.
+
+---
 
 ## Endpoints principais
 
@@ -69,5 +200,12 @@ Abra http://localhost:5173
 ## Testes
 
 ```bash
+# Web
 mvn -pl web -am test
+
+# Desktop
+mvn -pl desktop -am test
+
+# Todos os módulos
+mvn test
 ```
