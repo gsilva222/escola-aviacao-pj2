@@ -45,11 +45,11 @@ public final class MockServices {
         studentService = new StudentService(studentRepository, courseRepository, instructorRepository);
         courseService = new CourseService(courseRepository);
         aircraftService = new AircraftService(aircraftRepository);
-        flightService = new FlightService(flightRepository, studentRepository, instructorRepository, aircraftRepository);
+        flightService = new FlightService(flightRepository, studentRepository, instructorRepository, aircraftRepository, maintenanceRepository);
         instructorService = new InstructorService(instructorRepository);
         evaluationService = new EvaluationService(evaluationRepository, studentRepository, courseRepository);
         paymentService = new PaymentService(paymentRepository);
-        maintenanceService = new MaintenanceService(maintenanceRepository, aircraftRepository);
+        maintenanceService = new MaintenanceService(maintenanceRepository, aircraftRepository, flightRepository);
         perfilService = new PerfilService(perfilRepository);
         paymentSummaryService = new PaymentSummaryService(paymentRepository);
         reportsService = new ReportsService(

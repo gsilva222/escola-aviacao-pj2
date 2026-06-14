@@ -33,6 +33,9 @@ public class StudentDocumentService {
         if (student == null || student.getId() == null) {
             throw new IllegalArgumentException("Estudante e obrigatorio");
         }
+        if (student.getStatus() != null && "suspended".equalsIgnoreCase(student.getStatus())) {
+            throw new IllegalArgumentException("Aluno suspenso: nao e permitido enviar documentos");
+        }
         if (fileName == null || fileName.isBlank()) {
             throw new IllegalArgumentException("Nome do ficheiro e obrigatorio");
         }

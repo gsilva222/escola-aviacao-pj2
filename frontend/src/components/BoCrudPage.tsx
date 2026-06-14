@@ -161,7 +161,7 @@ export function BoCrudPage({ config }: { config: EntityConfig }) {
         subtitle={`${total} registos`}
         actions={<button type="button" className="btn" onClick={openCreate}>Novo</button>}
       />
-      {error && <ErrorAlert message={error} />}
+      {!modalOpen && error && <ErrorAlert message={error} />}
       {loading ? <Loading /> : (
         <>
           <DataTable
@@ -192,6 +192,7 @@ export function BoCrudPage({ config }: { config: EntityConfig }) {
       )}
       <Modal open={modalOpen} title={editing ? `Editar ${config.title}` : `Novo ${config.title}`} onClose={() => setModalOpen(false)} wide={config.wide}>
         <form onSubmit={save}>
+          {error && <ErrorAlert message={error} />}
           <div className="form-grid">
             {fields.map((field) => (
               <div className="field" key={field.name}>

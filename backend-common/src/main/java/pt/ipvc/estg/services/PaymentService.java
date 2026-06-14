@@ -64,12 +64,16 @@ public class PaymentService {
         if (description == null || description.trim().isEmpty()) {
             throw new IllegalArgumentException("Descricao e obrigatoria");
         }
+        validateAlunoNotSuspended(student);
         BusinessRules.requirePositive("Valor", amount);
         Payment payment = new Payment(student, description, amount, dueDate);
         return paymentRepository.save(payment);
     }
 
     public Payment savePagamento(Payment payment) {
+        if (payment != null && payment.getStudent() != null) {
+            validateAlunoNotSuspended(payment.getStudent());
+        }
         if (payment.getStatus() != null) {
             payment.setStatus(BusinessRules.requireAllowed("Status", payment.getStatus(), BusinessRules.PAYMENT_STATUSES));
         }
@@ -119,6 +123,12 @@ public class PaymentService {
     private static void validateId(Integer id) {
         if (id == null || id <= 0) {
             throw new IllegalArgumentException("ID deve ser valido");
+        }
+    }
+
+    private void validateAlunoNotSuspended(Student student) {
+        if (student.getStatus() != null && "suspended".equalsIgnoreCase(student.getStatus())) {
+            throw new IllegalArgumentException("Aluno suspenso: nao e permitido criar/atualizar pagamentos");
         }
     }
 }

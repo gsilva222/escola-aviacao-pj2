@@ -30,8 +30,9 @@ public class BusinessServicesConfig {
     public FlightService flightService(FlightRepository flightRepository,
                                        StudentRepository studentRepository,
                                        InstructorRepository instructorRepository,
-                                       AircraftRepository aircraftRepository) {
-        return new FlightService(flightRepository, studentRepository, instructorRepository, aircraftRepository);
+                                       AircraftRepository aircraftRepository,
+                                       MaintenanceRepository maintenanceRepository) {
+        return new FlightService(flightRepository, studentRepository, instructorRepository, aircraftRepository, maintenanceRepository);
     }
 
     @Bean
@@ -53,8 +54,9 @@ public class BusinessServicesConfig {
 
     @Bean
     public MaintenanceService maintenanceService(MaintenanceRepository maintenanceRepository,
-                                                 AircraftRepository aircraftRepository) {
-        return new MaintenanceService(maintenanceRepository, aircraftRepository);
+                                                 AircraftRepository aircraftRepository,
+                                                 FlightRepository flightRepository) {
+        return new MaintenanceService(maintenanceRepository, aircraftRepository, flightRepository);
     }
 
     @Bean

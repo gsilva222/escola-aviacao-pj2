@@ -40,7 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest(classes = WebApp.class, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
-@TestPropertySource(properties = "security.disable=false")
+@TestPropertySource(properties = { "security.disable=false", "auth.allow-public-admin-register=true" })
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class DesktopApiIntegrationTest {
 

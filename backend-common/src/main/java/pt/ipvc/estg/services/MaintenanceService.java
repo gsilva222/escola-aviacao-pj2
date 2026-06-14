@@ -5,6 +5,8 @@ import pt.ipvc.estg.domain.PageResult;
 import pt.ipvc.estg.entities.Aircraft;
 import pt.ipvc.estg.entities.Maintenance;
 import pt.ipvc.estg.exception.EntityNotFoundException;
+import pt.ipvc.estg.entities.Flight;
+import pt.ipvc.estg.repositories.FlightRepository;
 import pt.ipvc.estg.repositories.AircraftRepository;
 import pt.ipvc.estg.repositories.MaintenanceRepository;
 import pt.ipvc.estg.validation.BusinessRules;
@@ -17,15 +19,20 @@ public class MaintenanceService {
 
     private final MaintenanceRepository maintenanceRepository;
     private final AircraftRepository aircraftRepository;
+    private final FlightRepository flightRepository;
 
-    public MaintenanceService(MaintenanceRepository maintenanceRepository, AircraftRepository aircraftRepository) {
+    public MaintenanceService(MaintenanceRepository maintenanceRepository,
+                              AircraftRepository aircraftRepository,
+                              FlightRepository flightRepository) {
         this.maintenanceRepository = maintenanceRepository;
         this.aircraftRepository = aircraftRepository;
+        this.flightRepository = flightRepository;
     }
 
     public MaintenanceService() {
         this(pt.ipvc.estg.bootstrap.MockServices.getInstance().maintenanceRepository(),
-                pt.ipvc.estg.bootstrap.MockServices.getInstance().aircraftRepository());
+                pt.ipvc.estg.bootstrap.MockServices.getInstance().aircraftRepository(),
+                pt.ipvc.estg.bootstrap.MockServices.getInstance().flightRepository());
     }
 
     public Optional<Maintenance> getManutencao(Integer id) {
@@ -94,6 +101,7 @@ public class MaintenanceService {
         if (maintenance.getPriority() != null) {
             maintenance.setPriority(BusinessRules.requireAllowed("Prioridade", maintenance.getPriority(), BusinessRules.MAINTENANCE_PRIORITIES));
         }
+        validateMaintenanceDoesNotCoverScheduledFlights(maintenance);
         return maintenanceRepository.save(maintenance);
     }
 
@@ -121,6 +129,7 @@ public class MaintenanceService {
         if (updates.getAircraft() != null && updates.getAircraft().getId() != null) {
             resolveAircraftUpdate(maintenance, updates.getAircraft().getId());
         }
+        validateMaintenanceDoesNotCoverScheduledFlights(maintenance);
         return maintenanceRepository.save(maintenance);
     }
 
@@ -132,6 +141,7 @@ public class MaintenanceService {
         if (priority != null) maintenance.setPriority(priority);
         if (cost != null && cost >= 0) maintenance.setCost(cost);
         if (status != null) maintenance.setStatus(status);
+        validateMaintenanceDoesNotCoverScheduledFlights(maintenance);
         return maintenanceRepository.save(maintenance);
     }
 
@@ -192,6 +202,38 @@ public class MaintenanceService {
     private static void validateId(Integer id) {
         if (id == null || id <= 0) {
             throw new IllegalArgumentException("ID deve ser valido");
+        }
+    }
+
+    private void validateMaintenanceDoesNotCoverScheduledFlights(Maintenance maintenance) {
+        if (maintenance == null) return;
+        if (maintenance.getAircraft() == null || maintenance.getAircraft().getId() == null) return;
+        if (maintenance.getStatus() == null) return;
+        if ("completed".equalsIgnoreCase(maintenance.getStatus())) {
+            return;
+        }
+        if (maintenance.getEstimatedEndDate() == null) {
+            // Para validar conflitos precisamos pelo menos da data estimada de fim.
+            throw new IllegalArgumentException("Manutencao em curso precisa de estimatedEndDate");
+        }
+
+        LocalDate start = maintenance.getStartDate() != null ? maintenance.getStartDate() : LocalDate.MIN;
+        LocalDate end = maintenance.getEstimatedEndDate();
+
+        Integer aircraftId = maintenance.getAircraft().getId();
+
+        // Regra: não permitir que a manutenção (por datas) “cubra” voos já agendados dessa aeronave.
+        for (Flight f : flightRepository.findAll()) {
+            if (f == null || f.getId() == null) continue;
+            if (!"scheduled".equalsIgnoreCase(f.getStatus())) continue;
+            if (f.getAircraft() == null || f.getAircraft().getId() == null) continue;
+            if (!f.getAircraft().getId().equals(aircraftId)) continue;
+            if (f.getFlightDate() == null) continue;
+
+            boolean covers = !f.getFlightDate().isBefore(start) && !f.getFlightDate().isAfter(end);
+            if (covers) {
+                throw new IllegalArgumentException("Manutencao em vigor ate " + end + " conflita com um voo agendado");
+            }
         }
     }
 }

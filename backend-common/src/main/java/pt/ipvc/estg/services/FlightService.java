@@ -3,16 +3,19 @@ package pt.ipvc.estg.services;
 import pt.ipvc.estg.domain.PageQuery;
 import pt.ipvc.estg.domain.PageResult;
 import pt.ipvc.estg.entities.Aircraft;
+import pt.ipvc.estg.entities.Maintenance;
 import pt.ipvc.estg.entities.Flight;
 import pt.ipvc.estg.entities.Instructor;
 import pt.ipvc.estg.entities.Student;
 import pt.ipvc.estg.exception.EntityNotFoundException;
 import pt.ipvc.estg.repositories.AircraftRepository;
+import pt.ipvc.estg.repositories.MaintenanceRepository;
 import pt.ipvc.estg.repositories.FlightRepository;
 import pt.ipvc.estg.repositories.InstructorRepository;
 import pt.ipvc.estg.repositories.StudentRepository;
 import pt.ipvc.estg.validation.BusinessRules;
 
+import java.time.LocalDateTime;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -23,22 +26,26 @@ public class FlightService {
     private final StudentRepository studentRepository;
     private final InstructorRepository instructorRepository;
     private final AircraftRepository aircraftRepository;
+    private final MaintenanceRepository maintenanceRepository;
 
     public FlightService(FlightRepository flightRepository,
                          StudentRepository studentRepository,
                          InstructorRepository instructorRepository,
-                         AircraftRepository aircraftRepository) {
+                         AircraftRepository aircraftRepository,
+                         MaintenanceRepository maintenanceRepository) {
         this.flightRepository = flightRepository;
         this.studentRepository = studentRepository;
         this.instructorRepository = instructorRepository;
         this.aircraftRepository = aircraftRepository;
+        this.maintenanceRepository = maintenanceRepository;
     }
 
     public FlightService() {
         this(pt.ipvc.estg.bootstrap.MockServices.getInstance().flightRepository(),
                 pt.ipvc.estg.bootstrap.MockServices.getInstance().studentRepository(),
                 pt.ipvc.estg.bootstrap.MockServices.getInstance().instructorRepository(),
-                pt.ipvc.estg.bootstrap.MockServices.getInstance().aircraftRepository());
+                pt.ipvc.estg.bootstrap.MockServices.getInstance().aircraftRepository(),
+                pt.ipvc.estg.bootstrap.MockServices.getInstance().maintenanceRepository());
     }
 
     public Optional<Flight> getVoo(Integer id) {
@@ -92,6 +99,7 @@ public class FlightService {
 
     public Flight saveVoo(Flight flight) {
         resolveRelations(flight);
+        validateSchedulingRules(flight);
         if (flight.getStatus() != null) {
             flight.setStatus(BusinessRules.requireAllowed("Status", flight.getStatus(), BusinessRules.FLIGHT_STATUSES));
         }
@@ -146,6 +154,119 @@ public class FlightService {
                     .orElseThrow(() -> new EntityNotFoundException("Aviao nao encontrado"));
             flight.setAircraft(aircraft);
         }
+    }
+
+    private void validateSchedulingRules(Flight flight) {
+        // Aplica regras apenas quando o objetivo é agendar (scheduled). Para completed/cancelled, não bloqueamos.
+        boolean isScheduling = flight.getStatus() == null || "scheduled".equalsIgnoreCase(flight.getStatus());
+        if (!isScheduling) {
+            return;
+        }
+
+        if (flight.getInstructor() != null && flight.getInstructor().getStatus() != null) {
+            // Regra: instrutor inativo nao pode agendar voos.
+            if ("inactive".equalsIgnoreCase(flight.getInstructor().getStatus())) {
+                throw new IllegalArgumentException("Instrutor inativo: nao e permitido agendar voos");
+            }
+        }
+
+        if (flight.getStudent() != null && "suspended".equalsIgnoreCase(flight.getStudent().getStatus())) {
+            throw new IllegalArgumentException("Aluno suspenso: nao e permitido criar voos");
+        }
+
+        validateAircraftMaintenanceWindow(flight);
+        validateScheduleConflicts(flight);
+    }
+
+    private void validateAircraftMaintenanceWindow(Flight flight) {
+        if (flight.getAircraft() == null || flight.getAircraft().getId() == null) {
+            return;
+        }
+        if (flight.getFlightDate() == null) {
+            return;
+        }
+
+        List<Maintenance> maintenances = maintenanceRepository.findByAircraft(flight.getAircraft().getId());
+        for (Maintenance m : maintenances) {
+            String status = m.getStatus() != null ? m.getStatus() : "";
+            if ("completed".equalsIgnoreCase(status)) {
+                continue;
+            }
+            if (m.getEstimatedEndDate() == null) {
+                // Sem prazo estimado, não conseguimos validar "após o prazo"; por consistência bloqueamos.
+                throw new IllegalArgumentException("Aeronave em manutencao sem prazo estimado");
+            }
+            // Regra: só permitir agendar depois do prazo estimado (estrito: flightDate > estimatedEndDate).
+            if (!flight.getFlightDate().isAfter(m.getEstimatedEndDate())) {
+                throw new IllegalArgumentException("Aeronave em manutencao ate " + m.getEstimatedEndDate() + " (agendamento bloqueado)");
+            }
+        }
+    }
+
+    private void validateScheduleConflicts(Flight flight) {
+        if (flight.getFlightDate() == null || flight.getFlightTime() == null || flight.getDuration() == null || flight.getDuration() <= 0) {
+            return;
+        }
+
+        LocalDateTime newStart = toStartDateTime(flight);
+        LocalDateTime newEnd = toEndDateTime(newStart, flight.getDuration());
+
+        List<Flight> allFlights = flightRepository.findAll();
+        for (Flight existing : allFlights) {
+            if (existing == null) continue;
+            if (existing.getId() != null && flight.getId() != null && existing.getId().equals(flight.getId())) {
+                continue; // update do mesmo registo
+            }
+            if (existing.getFlightDate() == null || existing.getFlightTime() == null || existing.getDuration() == null || existing.getDuration() <= 0) {
+                continue;
+            }
+            String existingStatus = existing.getStatus() != null ? existing.getStatus() : "";
+            if (!"scheduled".equalsIgnoreCase(existingStatus)) {
+                continue; // só consideramos voos agendados para conflito
+            }
+            LocalDateTime existingStart = toStartDateTime(existing);
+            LocalDateTime existingEnd = toEndDateTime(existingStart, existing.getDuration());
+
+            boolean aircraftConflict = flight.getAircraft() != null && existing.getAircraft() != null
+                    && flight.getAircraft().getId() != null && existing.getAircraft().getId() != null
+                    && flight.getAircraft().getId().equals(existing.getAircraft().getId());
+
+            boolean studentConflict = flight.getStudent() != null && existing.getStudent() != null
+                    && flight.getStudent().getId() != null && existing.getStudent().getId() != null
+                    && flight.getStudent().getId().equals(existing.getStudent().getId());
+
+            boolean instructorConflict = flight.getInstructor() != null && existing.getInstructor() != null
+                    && flight.getInstructor().getId() != null && existing.getInstructor().getId() != null
+                    && flight.getInstructor().getId().equals(existing.getInstructor().getId());
+
+            if (!(aircraftConflict || studentConflict || instructorConflict)) {
+                continue;
+            }
+
+            // Sobreposição de intervalos: [start, end)
+            boolean overlaps = newStart.isBefore(existingEnd) && existingStart.isBefore(newEnd);
+            if (overlaps) {
+                if (aircraftConflict && studentConflict) {
+                    throw new IllegalArgumentException("Conflito de agendamento: mesmo aluno e mesma aeronave no mesmo intervalo");
+                }
+                if (instructorConflict) {
+                    throw new IllegalArgumentException("Conflito de agendamento: instrutor ja possui voo nesse intervalo");
+                }
+                if (aircraftConflict) {
+                    throw new IllegalArgumentException("Conflito de agendamento: aeronave ocupada nesse intervalo");
+                }
+                throw new IllegalArgumentException("Conflito de agendamento: aluno ja possui voo nesse intervalo");
+            }
+        }
+    }
+
+    private LocalDateTime toStartDateTime(Flight f) {
+        return LocalDateTime.of(f.getFlightDate(), f.getFlightTime());
+    }
+
+    private LocalDateTime toEndDateTime(LocalDateTime start, double durationHours) {
+        long nanos = Math.round(durationHours * 3600d * 1_000_000_000d);
+        return start.plusNanos(nanos);
     }
 
     private static void validateId(Integer id) {

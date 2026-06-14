@@ -78,6 +78,7 @@ public class EvaluationService {
     public Evaluation criarAvaliacao(Student student, Course course, String examName) {
         if (student == null) throw new IllegalArgumentException("Estudante e obrigatorio");
         if (course == null) throw new IllegalArgumentException("Curso e obrigatorio");
+        validateAlunoCourseAndStatus(student, course);
         if (examName == null || examName.trim().isEmpty()) {
             throw new IllegalArgumentException("Nome do exame e obrigatorio");
         }
@@ -88,6 +89,7 @@ public class EvaluationService {
     public Evaluation saveAvaliacao(Evaluation evaluation) {
         validateEvaluationFields(evaluation);
         resolveRelations(evaluation);
+        validateAlunoCourseAndStatus(evaluation.getStudent(), evaluation.getCourse());
         return evaluationRepository.save(evaluation);
     }
 
@@ -118,6 +120,9 @@ public class EvaluationService {
                     .orElseThrow(() -> new EntityNotFoundException("Curso nao encontrado"));
             evaluation.setCourse(course);
         }
+
+        // Regra do dominio: avaliacao tem de corresponder ao curso do aluno
+        validateAlunoCourseAndStatus(evaluation.getStudent(), evaluation.getCourse());
         return evaluationRepository.save(evaluation);
     }
 
@@ -183,6 +188,21 @@ public class EvaluationService {
             Course course = courseRepository.findById(evaluation.getCourse().getId())
                     .orElseThrow(() -> new EntityNotFoundException("Curso nao encontrado"));
             evaluation.setCourse(course);
+        }
+    }
+
+    private void validateAlunoCourseAndStatus(Student student, Course course) {
+        if (student == null || course == null) {
+            return;
+        }
+        if (student.getStatus() != null && "suspended".equalsIgnoreCase(student.getStatus())) {
+            throw new IllegalArgumentException("Aluno suspenso: nao e permitido criar/atualizar avaliacao");
+        }
+        if (student.getCourse() == null || student.getCourse().getId() == null || course.getId() == null) {
+            return;
+        }
+        if (!student.getCourse().getId().equals(course.getId())) {
+            throw new IllegalArgumentException("Aluno nao esta neste curso");
         }
     }
 
