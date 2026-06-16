@@ -97,11 +97,16 @@ tr:last-child td { border-bottom: none; }
 .btn {
   border: none; border-radius: 8px; padding: 10px 14px;
   background: var(--primary); color: #fff; cursor: pointer; font-weight: 600;
+  white-space: nowrap;
 }
 .btn:hover { filter: brightness(1.05); }
 .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
-.btn-sm { padding: 6px 10px; font-size: 12px; }
+.btn-sm {
+  padding: 8px 12px;
+  font-size: 13px;
+  line-height: 1.1;
+}
 .btn-danger { background: var(--danger); }
 
 .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }

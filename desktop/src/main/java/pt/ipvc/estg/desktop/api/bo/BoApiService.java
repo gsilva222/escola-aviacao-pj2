@@ -419,6 +419,27 @@ public class BoApiService {
         client.delete("/bo/payments/" + id);
     }
 
+    // --- Users ---
+
+    public List<UserAccountResponse> listUsers() {
+        return client.getArray("/bo/users", UserAccountResponse.class);
+    }
+
+    public UserAccountResponse createUser(String username, String password, String role,
+                                          Integer studentId, String staffProfile) {
+        CreateUserRequest req = new CreateUserRequest(username, password, role, studentId, staffProfile);
+        return client.post("/bo/users", req, UserAccountResponse.class);
+    }
+
+    public UserAccountResponse setUserActive(Integer id, boolean active) {
+        return client.put("/bo/users/" + id + "/active", new UpdateUserActiveRequest(active), UserAccountResponse.class);
+    }
+
+    public UserAccountResponse updateUserStaffProfile(Integer id, String staffProfile) {
+        return client.put("/bo/users/" + id + "/staff-profile",
+                new UpdateStaffProfileRequest(staffProfile), UserAccountResponse.class);
+    }
+
     // --- Reports ---
 
     public ReportsSummaryResponse getReportsSummary() {

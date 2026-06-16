@@ -14,7 +14,6 @@ public class TopBar extends JPanel {
     private static final Color MUTED_TEXT = new Color(148, 163, 184);
     private static final Color ICON_TEXT = new Color(100, 116, 139);
     private static final Color BORDER_COLOR = new Color(226, 232, 240);
-    private static final Color INPUT_BG = new Color(241, 245, 249);
     private static final Color BLUE_PRIMARY = new Color(21, 101, 192);
     private static final Color HOVER_BG = new Color(248, 250, 252);
 
@@ -47,12 +46,6 @@ public class TopBar extends JPanel {
 
         add(leftPanel, BorderLayout.WEST);
 
-        JPanel centerPanel = new JPanel(new BorderLayout());
-        centerPanel.setOpaque(false);
-        centerPanel.setBorder(new EmptyBorder(0, 12, 0, 8));
-        centerPanel.add(createSearchField(), BorderLayout.CENTER);
-        add(centerPanel, BorderLayout.CENTER);
-
         add(createRightPanel(), BorderLayout.EAST);
     }
 
@@ -64,31 +57,6 @@ public class TopBar extends JPanel {
     private String formatToday() {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM yyyy", new Locale("pt", "PT"));
         return LocalDate.now().format(formatter);
-    }
-
-    private JComponent createSearchField() {
-        JPanel wrapper = new JPanel(new BorderLayout(8, 0));
-        wrapper.setBackground(INPUT_BG);
-        wrapper.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(203, 213, 225), 1),
-                new EmptyBorder(5, 11, 5, 11)
-        ));
-        wrapper.setPreferredSize(new Dimension(350, 34));
-        wrapper.setMinimumSize(new Dimension(240, 34));
-
-        JLabel icon = new JLabel("\u2315");
-        icon.setForeground(MUTED_TEXT);
-        icon.setFont(new Font("Dialog", Font.PLAIN, 14));
-
-        JTextField field = new JTextField("Pesquisar alunos, voos, aeronaves...");
-        field.setBorder(null);
-        field.setOpaque(false);
-        field.setForeground(ICON_TEXT);
-        field.setFont(new Font("Inter", Font.PLAIN, 10));
-
-        wrapper.add(icon, BorderLayout.WEST);
-        wrapper.add(field, BorderLayout.CENTER);
-        return wrapper;
     }
 
     private JComponent createRightPanel() {

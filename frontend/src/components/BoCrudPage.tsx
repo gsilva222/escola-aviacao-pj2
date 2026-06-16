@@ -172,10 +172,33 @@ export function BoCrudPage({ config }: { config: EntityConfig }) {
                 label: 'Acções',
                 render: (row) => (
                   <div className="row-actions">
-                    <button type="button" className="btn btn-sm btn-ghost" onClick={() => openEdit(row)}>Editar</button>
-                    <button type="button" className="btn btn-sm btn-danger" onClick={() => remove(row)}>Eliminar</button>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-ghost"
+                      onClick={() => openEdit(row)}
+                      title="Editar"
+                      aria-label="Editar"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-danger"
+                      onClick={() => remove(row)}
+                      title="Eliminar"
+                      aria-label="Eliminar"
+                    >
+                      Eliminar
+                    </button>
                     {config.docLink && (
-                      <Link className="btn btn-sm btn-ghost" to={config.docLink(row)}>Documentos</Link>
+                      <Link
+                        className="btn btn-sm btn-ghost"
+                        to={config.docLink(row)}
+                        title="Documentos"
+                        aria-label="Documentos"
+                      >
+                        Documentos
+                      </Link>
                     )}
                   </div>
                 ),
@@ -184,9 +207,27 @@ export function BoCrudPage({ config }: { config: EntityConfig }) {
             rows={rows}
           />
           <div className="pagination">
-            <button type="button" className="btn btn-sm btn-ghost" disabled={page <= 0} onClick={() => setPage((p) => p - 1)}>Anterior</button>
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost"
+              disabled={page <= 0}
+              onClick={() => setPage((p) => p - 1)}
+              title="Página anterior"
+              aria-label="Página anterior"
+            >
+              Anterior
+            </button>
             <span>Página {page + 1} / {totalPages}</span>
-            <button type="button" className="btn btn-sm btn-ghost" disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)}>Seguinte</button>
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost"
+              disabled={page + 1 >= totalPages}
+              onClick={() => setPage((p) => p + 1)}
+              title="Próxima página"
+              aria-label="Próxima página"
+            >
+              Seguinte
+            </button>
           </div>
         </>
       )}
@@ -231,7 +272,15 @@ export function BoCrudPage({ config }: { config: EntityConfig }) {
             ))}
           </div>
           <div className="modal-actions">
-            <button type="button" className="btn btn-ghost" onClick={() => setModalOpen(false)}>Cancelar</button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => setModalOpen(false)}
+              title="Cancelar"
+              aria-label="Cancelar"
+            >
+              Cancelar
+            </button>
             <button type="submit" className="btn" disabled={saving}>{saving ? 'A guardar...' : 'Guardar'}</button>
           </div>
         </form>

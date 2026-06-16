@@ -4,6 +4,7 @@ import pt.ipvc.estg.desktop.controllers.AircraftController;
 import pt.ipvc.estg.desktop.controllers.MaintenanceController;
 import pt.ipvc.estg.entities.Aircraft;
 import pt.ipvc.estg.entities.Maintenance;
+import pt.ipvc.estg.desktop.views.components.SearchablePanel;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -21,7 +22,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-public class BOMaintenance extends JPanel {
+public class BOMaintenance extends JPanel implements SearchablePanel {
 
     private static final Color PAGE_BG = new Color(238, 242, 247);
     private static final Color WHITE = Color.WHITE;
@@ -812,6 +813,15 @@ public class BOMaintenance extends JPanel {
                 BorderFactory.createLineBorder(BORDER, 1),
                 new EmptyBorder(6, 8, 6, 8)
         ));
+    }
+
+    @Override
+    public void setSearchQuery(String query) {
+        if (searchField == null) return;
+        String q = query == null ? "" : query.trim();
+        if (q.equals(searchField.getText())) return;
+        searchField.setText(q);
+        applyFilters();
     }
 
     private static class AircraftChoice {

@@ -3,6 +3,7 @@ package pt.ipvc.estg.desktop.views.panels;
 import pt.ipvc.estg.desktop.controllers.CourseController;
 import pt.ipvc.estg.desktop.controllers.EvaluationController;
 import pt.ipvc.estg.desktop.controllers.StudentController;
+import pt.ipvc.estg.desktop.views.components.SearchablePanel;
 import pt.ipvc.estg.entities.Course;
 import pt.ipvc.estg.entities.Evaluation;
 import pt.ipvc.estg.entities.Student;
@@ -22,7 +23,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
-public class BOEvaluations extends JPanel {
+public class BOEvaluations extends JPanel implements SearchablePanel {
 
     private static final Color PAGE_BG = new Color(238, 242, 247);
     private static final Color WHITE = Color.WHITE;
@@ -726,6 +727,16 @@ public class BOEvaluations extends JPanel {
         button.setFocusPainted(false);
         button.setBorder(new EmptyBorder(8, 12, 8, 12));
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+    }
+
+    @Override
+    public void setSearchQuery(String query) {
+        if (searchField == null) return;
+        String q = query == null ? "" : query.trim();
+        if (q.equals(searchField.getText())) return;
+        searchField.setText(q);
+        // applyFilters() é disparado via DocumentListener, mas chamamos para garantir.
+        applyFilters();
     }
 
     private static class StudentChoice {

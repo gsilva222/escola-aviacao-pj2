@@ -5,9 +5,12 @@ import javax.swing.border.Border;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
+import javax.swing.plaf.basic.BasicButtonUI;
 import javax.swing.plaf.basic.BasicScrollBarUI;
 import javax.swing.table.JTableHeader;
 import java.awt.*;
+import java.awt.geom.Area;
+import java.awt.geom.RoundRectangle2D;
 
 public final class UITheme {
 
@@ -193,59 +196,94 @@ public final class UITheme {
     }
 
     private static void polishButton(JButton button) {
+        // Navigation/topbar buttons paint themselves and must stay untouched.
+        if (isInNavigationShell(button) || isInternalControl(button)) {
+            return;
+        }
+
         button.setFocusPainted(false);
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        button.setFont(resolveFont(button.getFont()));
-        if (button.getBackground() == null) {
-            button.setBackground(WHITE);
+        button.setRolloverEnabled(true);
+
+        Color foreground = button.getForeground();
+        Color background = button.getBackground() != null ? button.getBackground() : WHITE;
+        Font font = resolveFont(button.getFont());
+        Insets padding = extractPadding(button.getBorder(), new Insets(9, 16, 9, 16));
+
+        // A custom UI paints the rounded background *before* the text, so the
+        // label is never covered (unlike a fill border, which paints last).
+        button.setUI(new RoundedButtonUI());
+        button.setContentAreaFilled(false);
+        button.setBorderPainted(false);
+        button.setOpaque(false);
+        button.setForeground(foreground);
+        button.setBackground(background);
+        button.setFont(font);
+        button.setBorder(new EmptyBorder(padding));
+    }
+
+    private static Insets extractPadding(Border border, Insets fallback) {
+        if (border instanceof EmptyBorder emptyBorder) {
+            return emptyBorder.getBorderInsets();
         }
-        if (button.isContentAreaFilled()) {
-            button.setContentAreaFilled(false);
-            button.setOpaque(false);
+        if (border instanceof CompoundBorder compoundBorder
+                && compoundBorder.getInsideBorder() instanceof EmptyBorder emptyBorder) {
+            return emptyBorder.getBorderInsets();
         }
-        Border current = button.getBorder();
-        if (current == null || current instanceof LineBorder || current instanceof EmptyBorder) {
-            button.setBorder(new CompoundBorder(
-                    new RoundedFillBorder(button.getBackground(), BORDER, 1, 16),
-                    new EmptyBorder(8, 12, 8, 12)
-            ));
-        } else if (current instanceof CompoundBorder compoundBorder
-                && compoundBorder.getOutsideBorder() instanceof LineBorder lineBorder) {
-            button.setBorder(new CompoundBorder(
-                    new RoundedFillBorder(button.getBackground(), lineBorder.getLineColor(), lineBorder.getThickness(), 16),
-                    compoundBorder.getInsideBorder()
-            ));
+        return fallback;
+    }
+
+    private static boolean isInternalControl(Component component) {
+        Component current = component.getParent();
+        while (current != null) {
+            if (current instanceof JComboBox<?> || current instanceof JScrollBar || current instanceof JSpinner) {
+                return true;
+            }
+            current = current.getParent();
         }
+        return false;
     }
 
     private static void polishTextField(JTextField textField) {
+        if (isInNavigationShell(textField) || isInternalControl(textField)) {
+            return;
+        }
         textField.setFont(new Font("Inter", Font.PLAIN, 12));
         textField.setBackground(ROW_HOVER);
         textField.setForeground(TITLE);
         textField.setCaretColor(BLUE);
-        textField.setOpaque(false);
+        textField.setOpaque(true);
+        // The component fills its own background (opaque); the border only rounds
+        // the corners, so the typed text stays fully visible.
         textField.setBorder(new CompoundBorder(
-                new RoundedFillBorder(ROW_HOVER, BORDER, 1, 16),
+                new RoundedOutlineBorder(BORDER, 1, 16),
                 new EmptyBorder(8, 10, 8, 10)
         ));
         textField.setPreferredSize(new Dimension(textField.getPreferredSize().width, Math.max(38, textField.getPreferredSize().height)));
     }
 
     private static void polishTextArea(JTextArea textArea) {
+        if (isInNavigationShell(textArea)) {
+            return;
+        }
         textArea.setFont(new Font("Inter", Font.PLAIN, 12));
         textArea.setBackground(ROW_HOVER);
         textArea.setForeground(TITLE);
         textArea.setCaretColor(BLUE);
+        textArea.setOpaque(true);
         textArea.setBorder(new EmptyBorder(8, 10, 8, 10));
     }
 
     private static void polishComboBox(JComboBox<?> comboBox) {
+        if (isInNavigationShell(comboBox)) {
+            return;
+        }
         comboBox.setFont(new Font("Inter", Font.PLAIN, 12));
         comboBox.setBackground(WHITE);
         comboBox.setForeground(TITLE);
-        comboBox.setOpaque(false);
+        comboBox.setOpaque(true);
         comboBox.setBorder(new CompoundBorder(
-                new RoundedFillBorder(WHITE, BORDER, 1, 16),
+                new RoundedOutlineBorder(BORDER, 1, 16),
                 new EmptyBorder(7, 10, 7, 10)
         ));
         comboBox.setPreferredSize(new Dimension(comboBox.getPreferredSize().width, Math.max(38, comboBox.getPreferredSize().height)));
@@ -310,6 +348,99 @@ public final class UITheme {
             button.setMinimumSize(new Dimension(0, 0));
             button.setMaximumSize(new Dimension(0, 0));
             return button;
+        }
+    }
+
+    private static Color darken(Color color, float factor) {
+        return new Color(
+                Math.max(0, Math.round(color.getRed() * (1 - factor))),
+                Math.max(0, Math.round(color.getGreen() * (1 - factor))),
+                Math.max(0, Math.round(color.getBlue() * (1 - factor)))
+        );
+    }
+
+    private static Color blend(Color from, Color to, float ratio) {
+        return new Color(
+                Math.round(from.getRed() + (to.getRed() - from.getRed()) * ratio),
+                Math.round(from.getGreen() + (to.getGreen() - from.getGreen()) * ratio),
+                Math.round(from.getBlue() + (to.getBlue() - from.getBlue()) * ratio)
+        );
+    }
+
+    private static boolean isLight(Color color) {
+        double luminance = 0.299 * color.getRed() + 0.587 * color.getGreen() + 0.114 * color.getBlue();
+        return luminance > 200;
+    }
+
+    /**
+     * Paints a flat, rounded button background before the label, so the text is
+     * always drawn on top (instead of being covered by a fill border).
+     */
+    private static class RoundedButtonUI extends BasicButtonUI {
+        private static final int ARC = 16;
+
+        @Override
+        public void paint(Graphics g, JComponent c) {
+            AbstractButton button = (AbstractButton) c;
+            Color base = button.getBackground() != null ? button.getBackground() : WHITE;
+            ButtonModel model = button.getModel();
+
+            Color fill = base;
+            if (!button.isEnabled()) {
+                fill = blend(base, WHITE, 0.5f);
+            } else if (model.isPressed()) {
+                fill = darken(base, 0.12f);
+            } else if (model.isRollover()) {
+                fill = darken(base, 0.05f);
+            }
+
+            Graphics2D g2d = (Graphics2D) g.create();
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2d.setColor(fill);
+            g2d.fillRoundRect(0, 0, c.getWidth() - 1, c.getHeight() - 1, ARC, ARC);
+            g2d.setColor(isLight(base) ? BORDER : darken(base, 0.10f));
+            g2d.drawRoundRect(0, 0, c.getWidth() - 1, c.getHeight() - 1, ARC, ARC);
+            g2d.dispose();
+
+            super.paint(g, c);
+        }
+    }
+
+    /**
+     * Rounds the corners of an opaque component by repainting the four corner
+     * slivers with the parent background, then strokes a rounded outline.
+     * Unlike {@link RoundedFillBorder}, it never paints over the component's
+     * own content (text, combo value, etc.).
+     */
+    private static class RoundedOutlineBorder extends LineBorder {
+        private final int radius;
+
+        RoundedOutlineBorder(Color color, int thickness, int radius) {
+            super(color, thickness, true);
+            this.radius = radius;
+        }
+
+        @Override
+        public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
+            Graphics2D g2d = (Graphics2D) g.create();
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            Color corner = WHITE;
+            Container parent = c.getParent();
+            if (parent != null && parent.getBackground() != null) {
+                corner = parent.getBackground();
+            }
+
+            Area area = new Area(new Rectangle(x, y, width, height));
+            area.subtract(new Area(new RoundRectangle2D.Float(x, y, width - 1f, height - 1f, radius, radius)));
+            g2d.setColor(corner);
+            g2d.fill(area);
+
+            g2d.setColor(lineColor);
+            for (int i = 0; i < thickness; i++) {
+                g2d.drawRoundRect(x + i, y + i, width - i - i - 1, height - i - i - 1, radius, radius);
+            }
+            g2d.dispose();
         }
     }
 

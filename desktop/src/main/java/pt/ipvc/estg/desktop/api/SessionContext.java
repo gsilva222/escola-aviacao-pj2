@@ -9,6 +9,7 @@ public final class SessionContext {
     private static String role;
     private static Integer studentId;
     private static String displayRole;
+    private static String staffProfile;
 
     private SessionContext() {
     }
@@ -19,6 +20,7 @@ public final class SessionContext {
         role = auth.role();
         studentId = auth.studentId();
         displayRole = uiRole;
+        staffProfile = auth.staffProfile();
     }
 
     public static void clear() {
@@ -27,6 +29,7 @@ public final class SessionContext {
         role = null;
         studentId = null;
         displayRole = null;
+        staffProfile = null;
     }
 
     public static boolean isAuthenticated() {
@@ -51,6 +54,10 @@ public final class SessionContext {
 
     public static String getDisplayRole() {
         return displayRole != null ? displayRole : "Utilizador";
+    }
+
+    public static String getStaffProfile() {
+        return staffProfile;
     }
 
     public static boolean isAdmin() {

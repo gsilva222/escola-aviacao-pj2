@@ -1,9 +1,8 @@
 package pt.ipvc.estg.desktop.views.components;
 
+import pt.ipvc.estg.desktop.api.BoDataAccess;
 import pt.ipvc.estg.desktop.services.DesktopAuthService;
 import pt.ipvc.estg.desktop.security.RoleMenuPolicy;
-import pt.ipvc.estg.desktop.views.LoginFrame;
-
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
@@ -119,6 +118,10 @@ public class Sidebar extends JPanel {
         if (allowed.contains("evaluations")) addNavButton(panel, "evaluations", "Avaliacoes", "\u25A4");
         if (allowed.contains("payments")) addNavButton(panel, "payments", "Pagamentos", "\u25AC");
         if (allowed.contains("reports")) addNavButton(panel, "reports", "Relatorios", "\u25E7");
+        // User management only makes sense when connected to the API (admin).
+        if (allowed.contains("users") && BoDataAccess.useApi()) {
+            addNavButton(panel, "users", "Utilizadores", "\u25A3");
+        }
 
         panel.add(Box.createVerticalGlue());
         return panel;
@@ -187,20 +190,13 @@ public class Sidebar extends JPanel {
     private void logout() {
         int result = JOptionPane.showConfirmDialog(
                 this,
-                "Deseja terminar sessao?",
-                "Confirmacao",
+                "Deseja sair da aplicacao?",
+                "Confirmar",
                 JOptionPane.YES_NO_OPTION
         );
         if (result == JOptionPane.YES_OPTION) {
             DesktopAuthService.logout();
-            JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(this);
-            if (frame != null) {
-                frame.dispose();
-            }
-            SwingUtilities.invokeLater(() -> {
-                LoginFrame login = new LoginFrame();
-                login.setVisible(true);
-            });
+            System.exit(0);
         }
     }
 

@@ -4,6 +4,7 @@ import pt.ipvc.estg.desktop.controllers.PaymentController;
 import pt.ipvc.estg.desktop.controllers.StudentController;
 import pt.ipvc.estg.entities.Payment;
 import pt.ipvc.estg.entities.Student;
+import pt.ipvc.estg.desktop.views.components.SearchablePanel;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -23,7 +24,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-public class BOPayments extends JPanel {
+public class BOPayments extends JPanel implements SearchablePanel {
 
     private static final Color PAGE_BG = new Color(238, 242, 247);
     private static final Color WHITE = Color.WHITE;
@@ -611,6 +612,15 @@ public class BOPayments extends JPanel {
                 BorderFactory.createLineBorder(BORDER, 1),
                 new EmptyBorder(6, 8, 6, 8)
         ));
+    }
+
+    @Override
+    public void setSearchQuery(String query) {
+        if (searchField == null) return;
+        String q = query == null ? "" : query.trim();
+        if (q.equals(searchField.getText())) return;
+        searchField.setText(q);
+        applyFilters();
     }
 
     private String formatEuro(double value) {

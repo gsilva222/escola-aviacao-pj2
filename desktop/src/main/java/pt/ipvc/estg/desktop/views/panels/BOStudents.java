@@ -3,6 +3,7 @@ package pt.ipvc.estg.desktop.views.panels;
 import pt.ipvc.estg.desktop.controllers.CourseController;
 import pt.ipvc.estg.desktop.controllers.InstructorController;
 import pt.ipvc.estg.desktop.controllers.StudentController;
+import pt.ipvc.estg.desktop.views.components.SearchablePanel;
 import pt.ipvc.estg.desktop.util.PdfExportHelper;
 import pt.ipvc.estg.entities.Course;
 import pt.ipvc.estg.entities.Instructor;
@@ -22,7 +23,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
 
-public class BOStudents extends JPanel {
+public class BOStudents extends JPanel implements SearchablePanel {
 
     private static final Color PAGE_BG = new Color(238, 242, 247);      // #EEF2F7
     private static final Color WHITE = Color.WHITE;
@@ -496,6 +497,16 @@ public class BOStudents extends JPanel {
                 BorderFactory.createLineBorder(BORDER, 1),
                 new EmptyBorder(6, 10, 6, 10)
         ));
+    }
+
+    @Override
+    public void setSearchQuery(String query) {
+        if (searchField == null) return;
+        String q = query == null ? "" : query.trim();
+        if (q.equals(searchField.getText())) return;
+        searchField.setText(q);
+        // applyFilters() é disparado via DocumentListener, mas chamamos para garantir.
+        applyFilters();
     }
 
     private static class StudentRenderer extends DefaultTableCellRenderer {

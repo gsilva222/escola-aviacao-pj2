@@ -33,7 +33,15 @@ export function Modal({
       >
         <header className="modal-header">
           <h2>{title}</h2>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>×</button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={onClose}
+            title="Fechar"
+            aria-label="Fechar"
+          >
+            ×
+          </button>
         </header>
         <div className="modal-body">{children}</div>
       </div>

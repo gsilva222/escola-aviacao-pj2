@@ -19,7 +19,7 @@ class DesktopAuthServiceTest {
 
     @Test
     void logoutShouldClearSessionAndDisableApiAccess() {
-        SessionContext.setSession(new AuthResponse("token", "admin", "ADMIN", null), "Administrador");
+        SessionContext.setSession(new AuthResponse("token", "admin", "ADMIN", null, "Administrador"), "Administrador");
         assertTrue(BoDataAccess.useApi());
 
         DesktopAuthService.logout();

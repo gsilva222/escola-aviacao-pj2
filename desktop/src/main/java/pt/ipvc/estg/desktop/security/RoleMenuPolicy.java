@@ -23,6 +23,7 @@ public final class RoleMenuPolicy {
                 pages.add("courses");
                 pages.add("payments");
                 pages.add("evaluations");
+                pages.add("users");
             }
             case "Gestor Operacional" -> {
                 pages.add("flights");
@@ -49,7 +50,7 @@ public final class RoleMenuPolicy {
     private static Set<String> allPages() {
         return Set.of(
                 "dashboard", "students", "courses", "flights", "aircraft",
-                "instructors", "maintenance", "evaluations", "payments", "reports"
+                "instructors", "maintenance", "evaluations", "payments", "reports", "users"
         );
     }
 }

@@ -1,5 +1,6 @@
 package pt.ipvc.estg.desktop;
 
+import pt.ipvc.estg.desktop.api.BoDataAccess;
 import pt.ipvc.estg.desktop.api.SessionContext;
 import pt.ipvc.estg.dal.mock.MockDataSeeder;
 import pt.ipvc.estg.desktop.views.components.Sidebar;
@@ -22,6 +23,14 @@ public class DesktopApp extends JFrame {
     private JPanel contentPanel;
     private CardLayout cardLayout;
 
+    private String activePageKey = "dashboard";
+
+    // Instances of panels we want to control from TopBar search.
+    private BOStudents boStudents;
+    private BOEvaluations boEvaluations;
+    private BOMaintenance boMaintenance;
+    private BOPayments boPayments;
+
     public DesktopApp(String role) {
         this.userRole = role;
         if (!SessionContext.isAuthenticated()) {
@@ -43,9 +52,15 @@ public class DesktopApp extends JFrame {
         JPanel mainPanel = new JPanel(new BorderLayout());
         mainPanel.setBackground(new Color(238, 242, 247));
 
+        // When authenticated against the API, page permissions follow the
+        // account's real staff profile (like the web). The login combo is only
+        // a fallback for demo/offline mode where there is no real account.
+        String effectiveRole = resolveEffectiveRole();
+        java.util.Set<String> allowedPages = pt.ipvc.estg.desktop.security.RoleMenuPolicy.allowedPages(effectiveRole);
+
         // Sidebar (LEFT)
         String sessionUser = SessionContext.getUsername() != null ? SessionContext.getUsername() : userRole;
-        sidebar = new Sidebar(page -> navigateToPage(page), userRole, sessionUser);
+        sidebar = new Sidebar(page -> navigateToPage(page), effectiveRole, sessionUser);
         mainPanel.add(sidebar, BorderLayout.WEST);
 
         // Right panel: TopBar (NORTH) + Content (CENTER)
@@ -63,15 +78,29 @@ public class DesktopApp extends JFrame {
 
         // Add all pages to CardLayout
         contentPanel.add(new BODashboard(), "dashboard");
-        contentPanel.add(new BOStudents(), "students");
+
+        boStudents = new BOStudents();
+        contentPanel.add(boStudents, "students");
+
         contentPanel.add(new BOCourses(), "courses");
         contentPanel.add(new BOFlights(), "flights");
         contentPanel.add(new BOAircraft(), "aircraft");
         contentPanel.add(new BOInstructors(), "instructors");
-        contentPanel.add(new BOMaintenance(), "maintenance");
-        contentPanel.add(new BOEvaluations(), "evaluations");
-        contentPanel.add(new BOPayments(), "payments");
+        boMaintenance = new BOMaintenance();
+        contentPanel.add(boMaintenance, "maintenance");
+
+        boEvaluations = new BOEvaluations();
+        contentPanel.add(boEvaluations, "evaluations");
+
+        boPayments = new BOPayments();
+        contentPanel.add(boPayments, "payments");
+
         contentPanel.add(new BOReports(), "reports");
+
+        // User management only when connected to the API and the profile allows it.
+        if (BoDataAccess.useApi() && allowedPages.contains("users")) {
+            contentPanel.add(new BOUsers(), "users");
+        }
 
         rightPanel.add(contentPanel, BorderLayout.CENTER);
 
@@ -83,6 +112,16 @@ public class DesktopApp extends JFrame {
 
         // Show dashboard by default
         navigateToPage("dashboard");
+    }
+
+    private String resolveEffectiveRole() {
+        if (SessionContext.isAuthenticated() && SessionContext.isAdmin()) {
+            String staffProfile = SessionContext.getStaffProfile();
+            if (staffProfile != null && !staffProfile.isBlank()) {
+                return staffProfile;
+            }
+        }
+        return userRole;
     }
 
     private void navigateToPage(String page) {
@@ -98,6 +137,7 @@ public class DesktopApp extends JFrame {
             case "evaluations" -> "Avaliações e Exames";
             case "payments" -> "Pagamentos";
             case "reports" -> "Relatórios";
+            case "users" -> "Gestão de Utilizadores";
             default -> "Dashboard";
         };
 
@@ -107,6 +147,8 @@ public class DesktopApp extends JFrame {
         if (sidebar != null) {
             sidebar.setActivePage(page);
         }
+
+        activePageKey = page;
 
         // Switch to page in CardLayout
         cardLayout.show(contentPanel, page);
