@@ -17,6 +17,7 @@ import pt.ipvc.estg.validation.BusinessRules;
 
 import java.time.LocalDateTime;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -88,13 +89,24 @@ public class FlightService {
         return flightRepository.findByStatus(status);
     }
 
-    public Flight criarVoo(LocalDate flightDate, Student student, Instructor instructor, Aircraft aircraft) {
+    public Flight criarVoo(LocalDate flightDate, LocalTime flightTime, Double duration,
+                           Student student, Instructor instructor, Aircraft aircraft,
+                           String origin, String destination, String flightType) {
         if (flightDate == null) throw new IllegalArgumentException("Data do voo e obrigatoria");
+        if (flightTime == null) throw new IllegalArgumentException("Hora do voo e obrigatoria");
+        if (duration == null || duration <= 0) throw new IllegalArgumentException("Duracao deve ser superior a zero");
         if (student == null) throw new IllegalArgumentException("Estudante e obrigatorio");
         if (instructor == null) throw new IllegalArgumentException("Instrutor e obrigatorio");
         if (aircraft == null) throw new IllegalArgumentException("Aviao e obrigatorio");
+
         Flight flight = new Flight(flightDate, student, instructor, aircraft);
-        return flightRepository.save(flight);
+        flight.setFlightTime(flightTime);
+        flight.setDuration(duration);
+        flight.setOrigin(origin != null && !origin.isBlank() ? origin.trim().toUpperCase() : "LPPT");
+        flight.setDestination(destination != null && !destination.isBlank() ? destination.trim().toUpperCase() : "LPPT");
+        flight.setFlightType(flightType != null && !flightType.isBlank() ? flightType.trim() : "training");
+        flight.setStatus("scheduled");
+        return saveVoo(flight);
     }
 
     public Flight saveVoo(Flight flight) {
@@ -115,7 +127,7 @@ public class FlightService {
         if (flightType != null) flight.setFlightType(flightType);
         if (objectives != null) flight.setObjectives(objectives);
         if (grade != null) flight.setGrade(grade);
-        return flightRepository.save(flight);
+        return saveVoo(flight);
     }
 
     public void marcarComoConcluido(Integer id, Double duration, String grade) {
@@ -174,8 +186,121 @@ public class FlightService {
             throw new IllegalArgumentException("Aluno suspenso: nao e permitido criar voos");
         }
 
+        validateNotInPast(flight);
         validateAircraftMaintenanceWindow(flight);
         validateScheduleConflicts(flight);
+    }
+
+    private void validateNotInPast(Flight flight) {
+        if (flight.getFlightDate() == null) {
+            return;
+        }
+        LocalDate today = LocalDate.now();
+        if (flight.getFlightDate().isBefore(today)) {
+            throw new IllegalArgumentException("Nao e possivel agendar voos para datas anteriores a hoje");
+        }
+        if (flight.getFlightDate().equals(today) && flight.getFlightTime() != null) {
+            LocalDateTime start = LocalDateTime.of(flight.getFlightDate(), flight.getFlightTime());
+            if (start.isBefore(LocalDateTime.now())) {
+                throw new IllegalArgumentException("Nao e possivel agendar voos para horarios ja passados");
+            }
+        }
+    }
+
+    private void validateScheduleConflicts(Flight candidate) {
+        requireScheduleSlot(candidate);
+
+        LocalDateTime candidateStart = toStartDateTime(candidate);
+        LocalDateTime candidateEnd = toEndDateTime(candidateStart, candidate.getDuration());
+
+        for (Flight existing : flightRepository.findAll()) {
+            if (existing == null || isSameRecord(candidate, existing)) {
+                continue;
+            }
+            if (!isActiveSchedule(existing)) {
+                continue;
+            }
+            if (!sameDay(candidate, existing)) {
+                continue;
+            }
+
+            if (sameStudent(candidate, existing)) {
+                ensureNoTimeConflict(candidateStart, candidateEnd, existing,
+                        "Conflito de agendamento: o aluno ja tem aula agendada neste horario");
+            }
+            if (sameInstructor(candidate, existing)) {
+                ensureNoTimeConflict(candidateStart, candidateEnd, existing,
+                        "Conflito de agendamento: o instrutor ja tem voo agendado neste horario");
+            }
+            if (sameAircraft(candidate, existing)) {
+                ensureNoTimeConflict(candidateStart, candidateEnd, existing,
+                        "Conflito de agendamento: a aeronave ja tem voo agendado neste horario");
+            }
+        }
+    }
+
+    private void requireScheduleSlot(Flight flight) {
+        if (flight.getFlightTime() == null) {
+            throw new IllegalArgumentException("Hora do voo e obrigatoria para agendamento");
+        }
+        if (flight.getDuration() == null || flight.getDuration() <= 0) {
+            throw new IllegalArgumentException("Duracao deve ser superior a zero para agendamento");
+        }
+    }
+
+    private boolean hasScheduleSlot(Flight flight) {
+        return flight.getFlightTime() != null
+                && flight.getDuration() != null
+                && flight.getDuration() > 0;
+    }
+
+    private void ensureNoTimeConflict(LocalDateTime candidateStart, LocalDateTime candidateEnd,
+                                      Flight existing, String message) {
+        if (!hasScheduleSlot(existing)) {
+            throw new IllegalArgumentException(message);
+        }
+        LocalDateTime existingStart = toStartDateTime(existing);
+        LocalDateTime existingEnd = toEndDateTime(existingStart, existing.getDuration());
+        if (intervalsOverlap(candidateStart, candidateEnd, existingStart, existingEnd)) {
+            throw new IllegalArgumentException(message);
+        }
+    }
+
+    private static boolean intervalsOverlap(LocalDateTime aStart, LocalDateTime aEnd,
+                                            LocalDateTime bStart, LocalDateTime bEnd) {
+        return aStart.isBefore(bEnd) && bStart.isBefore(aEnd);
+    }
+
+    private static boolean isSameRecord(Flight candidate, Flight existing) {
+        return existing.getId() != null && candidate.getId() != null
+                && existing.getId().equals(candidate.getId());
+    }
+
+    private static boolean isActiveSchedule(Flight flight) {
+        String status = flight.getStatus() != null ? flight.getStatus() : "";
+        return "scheduled".equalsIgnoreCase(status);
+    }
+
+    private static boolean sameDay(Flight a, Flight b) {
+        return a.getFlightDate() != null && a.getFlightDate().equals(b.getFlightDate());
+    }
+
+    private static boolean sameStudent(Flight a, Flight b) {
+        return a.getStudent() != null && b.getStudent() != null
+                && a.getStudent().getId() != null && b.getStudent().getId() != null
+                && a.getStudent().getId().equals(b.getStudent().getId());
+    }
+
+    private static boolean sameInstructor(Flight a, Flight b) {
+        return a.getInstructor() != null && b.getInstructor() != null
+                && a.getInstructor().getId() != null && b.getInstructor().getId() != null
+                && a.getInstructor().getId().equals(b.getInstructor().getId());
+    }
+
+    private static boolean sameAircraft(Flight a, Flight b) {
+        return a.getAircraft() != null && b.getAircraft() != null
+                && a.getAircraft().getId() != null && b.getAircraft().getId() != null
+                && a.getAircraft().getId().equals(b.getAircraft().getId());
     }
 
     private void validateAircraftMaintenanceWindow(Flight flight) {
@@ -199,63 +324,6 @@ public class FlightService {
             // Regra: só permitir agendar depois do prazo estimado (estrito: flightDate > estimatedEndDate).
             if (!flight.getFlightDate().isAfter(m.getEstimatedEndDate())) {
                 throw new IllegalArgumentException("Aeronave em manutencao ate " + m.getEstimatedEndDate() + " (agendamento bloqueado)");
-            }
-        }
-    }
-
-    private void validateScheduleConflicts(Flight flight) {
-        if (flight.getFlightDate() == null || flight.getFlightTime() == null || flight.getDuration() == null || flight.getDuration() <= 0) {
-            return;
-        }
-
-        LocalDateTime newStart = toStartDateTime(flight);
-        LocalDateTime newEnd = toEndDateTime(newStart, flight.getDuration());
-
-        List<Flight> allFlights = flightRepository.findAll();
-        for (Flight existing : allFlights) {
-            if (existing == null) continue;
-            if (existing.getId() != null && flight.getId() != null && existing.getId().equals(flight.getId())) {
-                continue; // update do mesmo registo
-            }
-            if (existing.getFlightDate() == null || existing.getFlightTime() == null || existing.getDuration() == null || existing.getDuration() <= 0) {
-                continue;
-            }
-            String existingStatus = existing.getStatus() != null ? existing.getStatus() : "";
-            if (!"scheduled".equalsIgnoreCase(existingStatus)) {
-                continue; // só consideramos voos agendados para conflito
-            }
-            LocalDateTime existingStart = toStartDateTime(existing);
-            LocalDateTime existingEnd = toEndDateTime(existingStart, existing.getDuration());
-
-            boolean aircraftConflict = flight.getAircraft() != null && existing.getAircraft() != null
-                    && flight.getAircraft().getId() != null && existing.getAircraft().getId() != null
-                    && flight.getAircraft().getId().equals(existing.getAircraft().getId());
-
-            boolean studentConflict = flight.getStudent() != null && existing.getStudent() != null
-                    && flight.getStudent().getId() != null && existing.getStudent().getId() != null
-                    && flight.getStudent().getId().equals(existing.getStudent().getId());
-
-            boolean instructorConflict = flight.getInstructor() != null && existing.getInstructor() != null
-                    && flight.getInstructor().getId() != null && existing.getInstructor().getId() != null
-                    && flight.getInstructor().getId().equals(existing.getInstructor().getId());
-
-            if (!(aircraftConflict || studentConflict || instructorConflict)) {
-                continue;
-            }
-
-            // Sobreposição de intervalos: [start, end)
-            boolean overlaps = newStart.isBefore(existingEnd) && existingStart.isBefore(newEnd);
-            if (overlaps) {
-                if (aircraftConflict && studentConflict) {
-                    throw new IllegalArgumentException("Conflito de agendamento: mesmo aluno e mesma aeronave no mesmo intervalo");
-                }
-                if (instructorConflict) {
-                    throw new IllegalArgumentException("Conflito de agendamento: instrutor ja possui voo nesse intervalo");
-                }
-                if (aircraftConflict) {
-                    throw new IllegalArgumentException("Conflito de agendamento: aeronave ocupada nesse intervalo");
-                }
-                throw new IllegalArgumentException("Conflito de agendamento: aluno ja possui voo nesse intervalo");
             }
         }
     }

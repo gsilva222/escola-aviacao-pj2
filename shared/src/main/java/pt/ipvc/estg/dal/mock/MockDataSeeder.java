@@ -2,6 +2,7 @@ package pt.ipvc.estg.dal.mock;
 
 import pt.ipvc.estg.entities.*;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Random;
 
@@ -172,6 +173,12 @@ public class MockDataSeeder {
                 flight.setFlightDate(flightDate);
                 flight.setDuration(duration);
                 flight.setStatus(status);
+                if ("scheduled".equalsIgnoreCase(status)) {
+                    int hour = 8 + random.nextInt(9);
+                    flight.setFlightTime(LocalTime.of(hour, random.nextBoolean() ? 0 : 30));
+                } else if ("completed".equalsIgnoreCase(status)) {
+                    flight.setFlightTime(LocalTime.of(9 + random.nextInt(8), 0));
+                }
                 flight.setFlightType("Training");
                 flight.setOrigin("Porto");
                 flight.setDestination("Covilhã");

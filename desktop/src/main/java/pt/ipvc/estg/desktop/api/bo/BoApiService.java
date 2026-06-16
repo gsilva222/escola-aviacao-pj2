@@ -130,11 +130,16 @@ public class BoApiService {
         return optional(() -> EntityMappers.toFlight(client.get("/bo/flights/" + id, FlightResponse.class)));
     }
 
-    public Flight createFlight(LocalDate date, Student student, Instructor instructor, Aircraft aircraft) {
+    public Flight createFlight(LocalDate date, LocalTime time, Double duration,
+                               Student student, Instructor instructor, Aircraft aircraft,
+                               String origin, String destination, String flightType) {
         FlightRequest req = new FlightRequest(
-                date, LocalTime.of(10, 0), 1.0,
+                date, time, duration,
                 student.getId(), instructor.getId(), aircraft.getId(),
-                "LPPT", "LPPT", "training", "scheduled", null, null, null
+                origin != null ? origin.toUpperCase() : "LPPT",
+                destination != null ? destination.toUpperCase() : "LPPT",
+                flightType != null ? flightType : "training",
+                "scheduled", null, null, null
         );
         return EntityMappers.toFlight(client.post("/bo/flights", req, FlightResponse.class));
     }

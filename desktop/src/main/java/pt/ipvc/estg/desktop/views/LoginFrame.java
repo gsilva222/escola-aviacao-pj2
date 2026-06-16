@@ -318,12 +318,10 @@ public class LoginFrame extends JFrame {
             return;
         }
 
-        String username = DesktopAuthService.normalizeUsername(email);
-
         if (AppConfig.isApiEnabled()) {
             loginButton.setEnabled(false);
             try {
-                new DesktopAuthService().loginBackOffice(username, password, selectedRole);
+                new DesktopAuthService().loginBackOffice(email, password, selectedRole);
                 openDesktop(selectedRole);
                 return;
             } catch (ApiException ex) {

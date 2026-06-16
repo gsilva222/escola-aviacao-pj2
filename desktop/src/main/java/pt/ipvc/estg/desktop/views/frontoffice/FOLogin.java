@@ -1,6 +1,7 @@
 package pt.ipvc.estg.desktop.views.frontoffice;
 
 import pt.ipvc.estg.desktop.api.AppConfig;
+import pt.ipvc.estg.desktop.api.ApiException;
 import pt.ipvc.estg.desktop.services.StudentLoginService;
 import pt.ipvc.estg.desktop.views.LandingFrame;
 import pt.ipvc.estg.desktop.views.LoginFrame;
@@ -256,13 +257,17 @@ public class FOLogin extends JFrame {
             MockDataSeeder.seedAllData();
         }
 
-        Optional<Student> student = loginService.authenticate(userId, password);
+        try {
+            Optional<Student> student = loginService.authenticate(userId, password);
 
-        if (student.isPresent()) {
-            dispose();
-            new FOLayout(student.get()).setVisible(true);
-        } else {
-            JOptionPane.showMessageDialog(this, "Utilizador ou password invalidos.", "Erro", JOptionPane.ERROR_MESSAGE);
+            if (student.isPresent()) {
+                dispose();
+                new FOLayout(student.get()).setVisible(true);
+            } else {
+                JOptionPane.showMessageDialog(this, "Utilizador ou password invalidos.", "Erro", JOptionPane.ERROR_MESSAGE);
+            }
+        } catch (ApiException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Erro de autenticacao", JOptionPane.ERROR_MESSAGE);
         }
     }
 

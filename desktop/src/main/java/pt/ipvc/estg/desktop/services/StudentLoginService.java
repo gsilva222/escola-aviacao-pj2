@@ -24,13 +24,13 @@ public class StudentLoginService {
     public Optional<Student> authenticate(String userOrId, String password) {
         if (AppConfig.isApiEnabled()) {
             try {
-                String username = DesktopAuthService.normalizeUsername(userOrId);
+                String username = userOrId == null ? "" : userOrId.trim();
                 authService.loginStudent(username, password);
                 StudentResponse profile = apiClient.get("/fo/me", StudentResponse.class);
                 return Optional.of(StudentDtoMapper.fromResponse(profile));
             } catch (ApiException ex) {
-                if (!ex.isConnectionError() && ex.getStatusCode() != 0) {
-                    return Optional.empty();
+                if (!ex.isConnectionError()) {
+                    throw ex;
                 }
             }
         }

@@ -19,8 +19,15 @@ public class TopBar extends JPanel {
 
     private final JLabel pageTitleLabel;
     private final JLabel subtitleLabel;
+    private JLabel avatarLabel;
+    private JLabel profileNameLabel;
+    private JLabel profileRoleLabel;
 
     public TopBar() {
+        this("Admin. Geral", "Administrador", null);
+    }
+
+    public TopBar(String displayName, String roleLabel, Runnable onLogout) {
         setBackground(WHITE);
         setLayout(new BorderLayout(16, 0));
         setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_COLOR));
@@ -46,7 +53,27 @@ public class TopBar extends JPanel {
 
         add(leftPanel, BorderLayout.WEST);
 
-        add(createRightPanel(), BorderLayout.EAST);
+        add(createRightPanel(onLogout), BorderLayout.EAST);
+        setUserInfo(displayName, roleLabel);
+    }
+
+    public void setUserInfo(String displayName, String roleLabel) {
+        String name = displayName != null && !displayName.isBlank() ? displayName : "Utilizador";
+        String role = roleLabel != null && !roleLabel.isBlank() ? roleLabel : "Administrador";
+        profileNameLabel.setText(name.length() > 18 ? name.substring(0, 18) : name);
+        profileRoleLabel.setText(role.length() > 22 ? role.substring(0, 22) : role);
+        avatarLabel.setText(initials(name));
+    }
+
+    private static String initials(String name) {
+        if (name == null || name.isBlank()) {
+            return "US";
+        }
+        String trimmed = name.trim();
+        if (trimmed.length() >= 2) {
+            return trimmed.substring(0, 2).toUpperCase();
+        }
+        return trimmed.toUpperCase();
     }
 
     public void setPageTitle(String title) {
@@ -59,14 +86,32 @@ public class TopBar extends JPanel {
         return LocalDate.now().format(formatter);
     }
 
-    private JComponent createRightPanel() {
+    private JComponent createRightPanel(Runnable onLogout) {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
         panel.setOpaque(false);
         panel.setBorder(new EmptyBorder(0, 0, 0, 16));
 
         panel.add(createNotificationButton());
         panel.add(createProfileChip());
+        if (onLogout != null) {
+            panel.add(createLogoutButton(onLogout));
+        }
         return panel;
+    }
+
+    private JComponent createLogoutButton(Runnable onLogout) {
+        JButton logoutBtn = new JButton("Sair");
+        logoutBtn.setFocusPainted(false);
+        logoutBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        logoutBtn.setFont(new Font("Inter", Font.PLAIN, 11));
+        logoutBtn.setForeground(new Color(239, 68, 68));
+        logoutBtn.setBackground(WHITE);
+        logoutBtn.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER_COLOR, 1),
+                new EmptyBorder(6, 12, 6, 12)
+        ));
+        logoutBtn.addActionListener(e -> onLogout.run());
+        return logoutBtn;
     }
 
     private JComponent createNotificationButton() {
@@ -102,30 +147,30 @@ public class TopBar extends JPanel {
         ));
         chip.setPreferredSize(new Dimension(160, 38));
 
-        JLabel avatar = new JLabel("AD", SwingConstants.CENTER);
-        avatar.setPreferredSize(new Dimension(26, 26));
-        avatar.setOpaque(true);
-        avatar.setBackground(BLUE_PRIMARY);
-        avatar.setForeground(Color.WHITE);
-        avatar.setFont(new Font("Inter", Font.BOLD, 10));
+        avatarLabel = new JLabel("AD", SwingConstants.CENTER);
+        avatarLabel.setPreferredSize(new Dimension(26, 26));
+        avatarLabel.setOpaque(true);
+        avatarLabel.setBackground(BLUE_PRIMARY);
+        avatarLabel.setForeground(Color.WHITE);
+        avatarLabel.setFont(new Font("Inter", Font.BOLD, 10));
 
         JPanel text = new JPanel();
         text.setOpaque(false);
         text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
-        JLabel name = new JLabel("Admin. Geral");
-        name.setForeground(DARK_TEXT);
-        name.setFont(new Font("Inter", Font.BOLD, 10));
-        JLabel role = new JLabel("Administrador");
-        role.setForeground(MUTED_TEXT);
-        role.setFont(new Font("Inter", Font.PLAIN, 9));
-        text.add(name);
-        text.add(role);
+        profileNameLabel = new JLabel("Admin. Geral");
+        profileNameLabel.setForeground(DARK_TEXT);
+        profileNameLabel.setFont(new Font("Inter", Font.BOLD, 10));
+        profileRoleLabel = new JLabel("Administrador");
+        profileRoleLabel.setForeground(MUTED_TEXT);
+        profileRoleLabel.setFont(new Font("Inter", Font.PLAIN, 9));
+        text.add(profileNameLabel);
+        text.add(profileRoleLabel);
 
         JLabel chevron = new JLabel("\u25BE");
         chevron.setForeground(MUTED_TEXT);
         chevron.setFont(new Font("Dialog", Font.PLAIN, 11));
 
-        chip.add(avatar, BorderLayout.WEST);
+        chip.add(avatarLabel, BorderLayout.WEST);
         chip.add(text, BorderLayout.CENTER);
         chip.add(chevron, BorderLayout.EAST);
         return chip;

@@ -1,7 +1,6 @@
 package pt.ipvc.estg.desktop.views.components;
 
 import pt.ipvc.estg.desktop.api.BoDataAccess;
-import pt.ipvc.estg.desktop.services.DesktopAuthService;
 import pt.ipvc.estg.desktop.security.RoleMenuPolicy;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -28,6 +27,7 @@ public class Sidebar extends JPanel {
     private final NavigationListener listener;
     private final String userRole;
     private final String displayUsername;
+    private final Runnable onLogout;
     private final Map<String, NavButton> navButtons = new LinkedHashMap<>();
     private String activePage = "dashboard";
 
@@ -36,9 +36,14 @@ public class Sidebar extends JPanel {
     }
 
     public Sidebar(NavigationListener listener, String userRole, String displayUsername) {
+        this(listener, userRole, displayUsername, null);
+    }
+
+    public Sidebar(NavigationListener listener, String userRole, String displayUsername, Runnable onLogout) {
         this.listener = listener;
         this.userRole = userRole != null ? userRole : "Administrador";
         this.displayUsername = displayUsername != null ? displayUsername : "Utilizador";
+        this.onLogout = onLogout;
 
         setLayout(new BorderLayout());
         setBackground(DARK_BG);
@@ -171,10 +176,13 @@ public class Sidebar extends JPanel {
         text.add(role);
 
         JButton logoutBtn = new JButton("Sair");
-        logoutBtn.setFont(new Font("Inter", Font.PLAIN, 11));
-        logoutBtn.setForeground(new Color(96, 165, 250));
-        logoutBtn.setBackground(new Color(0, 0, 0, 0));
-        logoutBtn.setBorderPainted(false);
+        logoutBtn.setFont(new Font("Inter", Font.BOLD, 11));
+        logoutBtn.setForeground(new Color(248, 113, 113));
+        logoutBtn.setBackground(new Color(255, 255, 255, 18));
+        logoutBtn.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(248, 113, 113, 120), 1),
+                new EmptyBorder(4, 10, 4, 10)
+        ));
         logoutBtn.setFocusPainted(false);
         logoutBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         logoutBtn.addActionListener(e -> logout());
@@ -188,15 +196,8 @@ public class Sidebar extends JPanel {
     }
 
     private void logout() {
-        int result = JOptionPane.showConfirmDialog(
-                this,
-                "Deseja sair da aplicacao?",
-                "Confirmar",
-                JOptionPane.YES_NO_OPTION
-        );
-        if (result == JOptionPane.YES_OPTION) {
-            DesktopAuthService.logout();
-            System.exit(0);
+        if (onLogout != null) {
+            onLogout.run();
         }
     }
 

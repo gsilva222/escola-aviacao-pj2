@@ -12,6 +12,7 @@ class DesktopAuthServiceTest {
     void shouldNormalizeEmailToUsername() {
         assertEquals("admin", DesktopAuthService.normalizeUsername("admin@aeroschool.pt"));
         assertEquals("joao.silva", DesktopAuthService.normalizeUsername("joao.silva"));
+        assertEquals("user", DesktopAuthService.normalizeUsername("user@user.com"));
     }
 
     @Test

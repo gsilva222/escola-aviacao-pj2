@@ -17,7 +17,7 @@ public class DesktopAuthService {
     }
 
     public AuthResponse loginBackOffice(String username, String password, String uiRole) {
-        AuthResponse response = login(username, password);
+        AuthResponse response = loginWithCandidates(username, password);
         if (!"ADMIN".equalsIgnoreCase(response.role())) {
             throw new ApiException(403, "Conta sem permissao de BackOffice");
         }
@@ -26,7 +26,7 @@ public class DesktopAuthService {
     }
 
     public AuthResponse loginStudent(String username, String password) {
-        AuthResponse response = login(username, password);
+        AuthResponse response = loginWithCandidates(username, password);
         if (!"STUDENT".equalsIgnoreCase(response.role())) {
             throw new ApiException(403, "Conta sem permissao de aluno");
         }
@@ -34,10 +34,41 @@ public class DesktopAuthService {
         return response;
     }
 
-    private AuthResponse login(String username, String password) {
+    private AuthResponse loginWithCandidates(String input, String password) {
         if (!AppConfig.isApiEnabled()) {
             throw new ApiException("API desativada");
         }
+        String trimmed = input == null ? "" : input.trim();
+        if (trimmed.isEmpty()) {
+            throw new ApiException(401, "Credenciais invalidas");
+        }
+
+        java.util.LinkedHashSet<String> candidates = new java.util.LinkedHashSet<>();
+        candidates.add(trimmed);
+        String normalized = normalizeUsername(trimmed);
+        if (!normalized.equals(trimmed)) {
+            candidates.add(normalized);
+        }
+
+        ApiException lastFailure = null;
+        for (String candidate : candidates) {
+            try {
+                return login(candidate, password);
+            } catch (ApiException ex) {
+                if (ex.isConnectionError()) {
+                    throw ex;
+                }
+                if (ex.getStatusCode() == 401 || ex.getStatusCode() == 403) {
+                    lastFailure = ex;
+                } else {
+                    throw ex;
+                }
+            }
+        }
+        throw lastFailure != null ? lastFailure : new ApiException(401, "Credenciais invalidas");
+    }
+
+    private AuthResponse login(String username, String password) {
         return apiClient.postPublic("/auth/login", new AuthLoginRequest(username, password), AuthResponse.class);
     }
 

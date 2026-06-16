@@ -12,6 +12,7 @@ import pt.ipvc.estg.entities.Student;
 import pt.ipvc.estg.services.FlightService;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -79,15 +80,19 @@ public class FlightController {
         return flightService.getVoosPorStatus(status);
     }
 
-    public void criarVoo(LocalDate flightDate, Student student, Instructor instructor, Aircraft aircraft) {
+    public void criarVoo(LocalDate flightDate, LocalTime flightTime, Double duration,
+                         Student student, Instructor instructor, Aircraft aircraft,
+                         String origin, String destination, String flightType) {
         try {
             if (BoDataAccess.useApi()) {
-                boApi.createFlight(flightDate, student, instructor, aircraft);
+                boApi.createFlight(flightDate, flightTime, duration, student, instructor, aircraft,
+                        origin, destination, flightType);
                 return;
             }
-            flightService.criarVoo(flightDate, student, instructor, aircraft);
+            flightService.criarVoo(flightDate, flightTime, duration, student, instructor, aircraft,
+                    origin, destination, flightType);
         } catch (IllegalArgumentException | ApiException e) {
-            throw new RuntimeException("Erro ao criar voo: " + e.getMessage());
+            throw new RuntimeException(e.getMessage(), e);
         }
     }
 

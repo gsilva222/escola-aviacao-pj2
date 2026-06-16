@@ -15,6 +15,8 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -396,49 +398,139 @@ public class BOFlights extends JPanel {
     }
 
     private void scheduleFlightDialog() {
-        JComboBox<Student> studentCombo = new JComboBox<>(studentController.listarEstudantes().toArray(new Student[0]));
-        studentCombo.setRenderer(new DefaultListCellRenderer() {
-            @Override
-            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
-                Student student = (Student) value;
-                return super.getListCellRendererComponent(list, student != null ? student.getName() : "", index, isSelected, cellHasFocus);
-            }
-        });
+        List<Student> students = studentController.listarEstudantes();
+        List<Instructor> instructors = instructorController.listarInstrutores().stream()
+                .filter(i -> i.getStatus() == null || "active".equalsIgnoreCase(i.getStatus()))
+                .toList();
+        List<Aircraft> aircraftList = aircraftController.listarAvioes().stream()
+                .filter(a -> "operational".equalsIgnoreCase(a.getStatus()))
+                .toList();
 
-        JComboBox<String> typeCombo = new JComboBox<>(new String[]{"Local", "Navigation", "IFR"});
+        if (students.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Nao existem alunos registados.", "Validacao", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        if (instructors.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Nao existem instrutores activos.", "Validacao", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        if (aircraftList.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Nao existem aeronaves operacionais.", "Validacao", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        JComboBox<Student> studentCombo = new JComboBox<>(students.toArray(new Student[0]));
+        studentCombo.setRenderer(nameRenderer());
+
+        JComboBox<Instructor> instructorCombo = new JComboBox<>(instructors.toArray(new Instructor[0]));
+        instructorCombo.setRenderer(nameRenderer());
+
+        JComboBox<Aircraft> aircraftCombo = new JComboBox<>(aircraftList.toArray(new Aircraft[0]));
+        aircraftCombo.setRenderer(aircraftRenderer());
+
+        JComboBox<String> typeCombo = new JComboBox<>(new String[]{"training", "Local", "Navigation", "IFR"});
         JTextField dateField = new JTextField(LocalDate.now().toString());
+        JTextField timeField = new JTextField("10:00");
+        JTextField durationField = new JTextField("1.5");
+        JTextField originField = new JTextField("LPPT");
+        JTextField destinationField = new JTextField("LPPT");
 
         JPanel form = new JPanel(new GridLayout(0, 1, 6, 6));
-        form.add(new JLabel("Aluno"));
-        form.add(studentCombo);
-        form.add(new JLabel("Tipo"));
-        form.add(typeCombo);
         form.add(new JLabel("Data (yyyy-mm-dd)"));
         form.add(dateField);
+        form.add(new JLabel("Hora (HH:mm)"));
+        form.add(timeField);
+        form.add(new JLabel("Duracao (horas)"));
+        form.add(durationField);
+        form.add(new JLabel("Aluno"));
+        form.add(studentCombo);
+        form.add(new JLabel("Instrutor"));
+        form.add(instructorCombo);
+        form.add(new JLabel("Aeronave"));
+        form.add(aircraftCombo);
+        form.add(new JLabel("Origem (ICAO)"));
+        form.add(originField);
+        form.add(new JLabel("Destino (ICAO)"));
+        form.add(destinationField);
+        form.add(new JLabel("Tipo de voo"));
+        form.add(typeCombo);
 
-        int result = JOptionPane.showConfirmDialog(this, form, "Agendar Voo", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-        if (result == JOptionPane.OK_OPTION) {
-            try {
-                Student student = (Student) studentCombo.getSelectedItem();
-                if (student == null) {
-                    throw new IllegalArgumentException("Selecione um aluno.");
-                }
-                LocalDate date = LocalDate.parse(dateField.getText().trim());
+        JScrollPane scroll = new JScrollPane(form);
+        scroll.setPreferredSize(new Dimension(380, 420));
+        scroll.setBorder(null);
 
-                Instructor instructor = instructorController.listarInstrutores().stream()
-                        .findFirst()
-                        .orElseThrow(() -> new IllegalArgumentException("Sem instrutores disponiveis."));
-                Aircraft aircraft = aircraftController.listarAvioes().stream()
-                        .filter(a -> "operational".equalsIgnoreCase(a.getStatus()))
-                        .findFirst()
-                        .orElseThrow(() -> new IllegalArgumentException("Sem aeronaves operacionais."));
-
-                flightController.criarVoo(date, student, instructor, aircraft);
-                loadData();
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "Erro ao agendar voo: " + ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
-            }
+        int result = JOptionPane.showConfirmDialog(this, scroll, "Agendar Voo",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (result != JOptionPane.OK_OPTION) {
+            return;
         }
+
+        try {
+            Student student = (Student) studentCombo.getSelectedItem();
+            Instructor instructor = (Instructor) instructorCombo.getSelectedItem();
+            Aircraft aircraft = (Aircraft) aircraftCombo.getSelectedItem();
+            if (student == null || instructor == null || aircraft == null) {
+                throw new IllegalArgumentException("Selecione aluno, instrutor e aeronave.");
+            }
+
+            LocalDate date = LocalDate.parse(dateField.getText().trim());
+            LocalTime time = LocalTime.parse(timeField.getText().trim(), DateTimeFormatter.ofPattern("H:mm"));
+            if (date.isBefore(LocalDate.now())) {
+                throw new IllegalArgumentException("Nao e possivel agendar voos para datas anteriores a hoje.");
+            }
+            if (date.equals(LocalDate.now()) && LocalDateTime.of(date, time).isBefore(LocalDateTime.now())) {
+                throw new IllegalArgumentException("Nao e possivel agendar voos para horarios ja passados.");
+            }
+            double duration = Double.parseDouble(durationField.getText().trim().replace(',', '.'));
+            if (duration <= 0) {
+                throw new IllegalArgumentException("A duracao deve ser superior a zero.");
+            }
+
+            String origin = originField.getText().trim().toUpperCase(Locale.ROOT);
+            String destination = destinationField.getText().trim().toUpperCase(Locale.ROOT);
+            if (!origin.matches("[A-Z]{4}") || !destination.matches("[A-Z]{4}")) {
+                throw new IllegalArgumentException("Origem e destino devem ser codigos ICAO com 4 letras.");
+            }
+
+            String flightType = (String) typeCombo.getSelectedItem();
+            flightController.criarVoo(date, time, duration, student, instructor, aircraft,
+                    origin, destination, flightType);
+            loadData();
+            JOptionPane.showMessageDialog(this, "Voo agendado com sucesso.");
+        } catch (Exception ex) {
+            String message = ex.getMessage() != null ? ex.getMessage() : "Erro ao agendar voo.";
+            JOptionPane.showMessageDialog(this, message, "Erro", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private static <T> DefaultListCellRenderer nameRenderer() {
+        return new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index,
+                                                          boolean isSelected, boolean cellHasFocus) {
+                String label = "";
+                if (value instanceof Student s) {
+                    label = s.getName();
+                } else if (value instanceof Instructor i) {
+                    label = i.getName();
+                }
+                return super.getListCellRendererComponent(list, label, index, isSelected, cellHasFocus);
+            }
+        };
+    }
+
+    private static DefaultListCellRenderer aircraftRenderer() {
+        return new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index,
+                                                          boolean isSelected, boolean cellHasFocus) {
+                String label = "";
+                if (value instanceof Aircraft a) {
+                    label = a.getRegistration() + (a.getModel() != null ? " · " + a.getModel() : "");
+                }
+                return super.getListCellRendererComponent(list, label, index, isSelected, cellHasFocus);
+            }
+        };
     }
 
     private void styleTable(JTable table) {

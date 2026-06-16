@@ -3,6 +3,8 @@ package pt.ipvc.estg.desktop;
 import pt.ipvc.estg.desktop.api.BoDataAccess;
 import pt.ipvc.estg.desktop.api.SessionContext;
 import pt.ipvc.estg.dal.mock.MockDataSeeder;
+import pt.ipvc.estg.desktop.services.DesktopAuthService;
+import pt.ipvc.estg.desktop.views.LoginFrame;
 import pt.ipvc.estg.desktop.views.components.Sidebar;
 import pt.ipvc.estg.desktop.views.components.TopBar;
 import pt.ipvc.estg.desktop.views.components.UITheme;
@@ -60,7 +62,7 @@ public class DesktopApp extends JFrame {
 
         // Sidebar (LEFT)
         String sessionUser = SessionContext.getUsername() != null ? SessionContext.getUsername() : userRole;
-        sidebar = new Sidebar(page -> navigateToPage(page), effectiveRole, sessionUser);
+        sidebar = new Sidebar(page -> navigateToPage(page), effectiveRole, sessionUser, this::handleLogout);
         mainPanel.add(sidebar, BorderLayout.WEST);
 
         // Right panel: TopBar (NORTH) + Content (CENTER)
@@ -68,7 +70,7 @@ public class DesktopApp extends JFrame {
         rightPanel.setBackground(new Color(238, 242, 247));
 
         // TopBar
-        topBar = new TopBar();
+        topBar = new TopBar(sessionUser, effectiveRole, this::handleLogout);
         rightPanel.add(topBar, BorderLayout.NORTH);
 
         // Content panel with CardLayout for switching between pages
@@ -152,6 +154,24 @@ public class DesktopApp extends JFrame {
 
         // Switch to page in CardLayout
         cardLayout.show(contentPanel, page);
+    }
+
+    private void handleLogout() {
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "Deseja terminar sessao e voltar ao login?",
+                "Confirmar",
+                JOptionPane.YES_NO_OPTION
+        );
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+        DesktopAuthService.logout();
+        dispose();
+        SwingUtilities.invokeLater(() -> {
+            LoginFrame loginFrame = new LoginFrame();
+            loginFrame.setVisible(true);
+        });
     }
 
     private JPanel createPlaceholder(String name) {
