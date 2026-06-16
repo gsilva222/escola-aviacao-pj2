@@ -6,6 +6,7 @@ import pt.ipvc.estg.desktop.api.AppConfig;
 import pt.ipvc.estg.desktop.api.SessionContext;
 import pt.ipvc.estg.desktop.api.dto.AuthLoginRequest;
 import pt.ipvc.estg.desktop.api.dto.AuthResponse;
+import pt.ipvc.estg.desktop.api.dto.ChangePasswordRequest;
 
 public class DesktopAuthService {
 
@@ -38,6 +39,15 @@ public class DesktopAuthService {
             throw new ApiException("API desativada");
         }
         return apiClient.postPublic("/auth/login", new AuthLoginRequest(username, password), AuthResponse.class);
+    }
+
+    public void changePassword(String currentPassword, String newPassword) {
+        if (!AppConfig.isApiEnabled()) {
+            throw new ApiException("API desativada");
+        }
+        apiClient.post("/auth/change-password",
+                new ChangePasswordRequest(currentPassword, newPassword),
+                Void.class);
     }
 
     public static void logout() {

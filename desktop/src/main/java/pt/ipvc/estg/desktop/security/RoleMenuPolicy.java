@@ -53,4 +53,34 @@ public final class RoleMenuPolicy {
                 "instructors", "maintenance", "evaluations", "payments", "reports", "users"
         );
     }
+
+    /** Rótulo legível para uma página do menu. */
+    public static String pageLabel(String pageKey) {
+        if (pageKey == null) {
+            return "";
+        }
+        return switch (pageKey) {
+            case "dashboard" -> "Dashboard";
+            case "students" -> "Alunos";
+            case "courses" -> "Cursos";
+            case "flights" -> "Voos";
+            case "aircraft" -> "Aeronaves";
+            case "instructors" -> "Instrutores";
+            case "maintenance" -> "Manutenção";
+            case "evaluations" -> "Avaliações";
+            case "payments" -> "Pagamentos";
+            case "reports" -> "Relatórios";
+            case "users" -> "Utilizadores";
+            default -> pageKey;
+        };
+    }
+
+    /** Resumo das páginas permitidas para um perfil staff (ex.: na página Utilizadores). */
+    public static String permissionsSummary(String staffProfile) {
+        return allowedPages(staffProfile).stream()
+                .filter(key -> !"dashboard".equals(key))
+                .map(RoleMenuPolicy::pageLabel)
+                .reduce((a, b) -> a + ", " + b)
+                .orElse("—");
+    }
 }

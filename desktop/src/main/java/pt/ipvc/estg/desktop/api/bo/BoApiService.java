@@ -293,9 +293,13 @@ public class BoApiService {
     }
 
     public Maintenance createMaintenance(Aircraft aircraft, String type, String description) {
+        return createMaintenance(aircraft, type, description, null);
+    }
+
+    public Maintenance createMaintenance(Aircraft aircraft, String type, String description, LocalDate estimatedEndDate) {
         MaintenanceRequest req = new MaintenanceRequest(
                 aircraft.getId(), type, description, null,
-                LocalDate.now(), null, null, "scheduled", "medium", 0.0, null
+                LocalDate.now(), estimatedEndDate, null, "scheduled", "medium", 0.0, null
         );
         return EntityMappers.toMaintenance(client.post("/bo/maintenance", req, MaintenanceResponse.class));
     }

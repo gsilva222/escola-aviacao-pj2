@@ -481,11 +481,20 @@ public class BOMaintenance extends JPanel implements SearchablePanel {
         descriptionArea.setLineWrap(true);
         descriptionArea.setWrapStyleWord(true);
 
+        SpinnerDateModel dateModel = new SpinnerDateModel(
+                Date.from(LocalDate.now().plusDays(7).atStartOfDay(ZoneId.systemDefault()).toInstant()),
+                null, null, java.util.Calendar.DAY_OF_MONTH
+        );
+        JSpinner estimatedDateSpinner = new JSpinner(dateModel);
+        estimatedDateSpinner.setEditor(new JSpinner.DateEditor(estimatedDateSpinner, "dd/MM/yyyy"));
+
         JPanel form = new JPanel(new GridLayout(0, 1, 6, 6));
         form.add(new JLabel("Aeronave"));
         form.add(aircraftCombo);
         form.add(new JLabel("Tipo de intervencao"));
         form.add(typeCombo);
+        form.add(new JLabel("Fim estimado"));
+        form.add(estimatedDateSpinner);
         form.add(new JLabel("Descricao"));
         form.add(new JScrollPane(descriptionArea));
 
@@ -504,8 +513,10 @@ public class BOMaintenance extends JPanel implements SearchablePanel {
             if (description.isEmpty()) {
                 throw new IllegalArgumentException("Descricao obrigatoria.");
             }
+            LocalDate estimatedEnd = ((Date) estimatedDateSpinner.getValue())
+                    .toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
 
-            maintenanceController.criarManutencao(choice.aircraft, type, description);
+            maintenanceController.criarManutencao(choice.aircraft, type, description, estimatedEnd);
             loadData();
             JOptionPane.showMessageDialog(this, "Intervencao criada com sucesso.", "Sucesso", JOptionPane.INFORMATION_MESSAGE);
         } catch (Exception ex) {

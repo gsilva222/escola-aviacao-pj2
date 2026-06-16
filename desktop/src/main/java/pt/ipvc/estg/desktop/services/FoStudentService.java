@@ -43,6 +43,17 @@ public class FoStudentService {
         }
     }
 
+    public void changePassword(String currentPassword, String newPassword) {
+        if (!useApi()) {
+            throw new RuntimeException("Alteracao de password indisponivel em modo offline.");
+        }
+        try {
+            new DesktopAuthService().changePassword(currentPassword, newPassword);
+        } catch (ApiException ex) {
+            throw new RuntimeException(ex.getMessage(), ex);
+        }
+    }
+
     public FoDashboardResponse getDashboard() {
         return foApi.getDashboard();
     }

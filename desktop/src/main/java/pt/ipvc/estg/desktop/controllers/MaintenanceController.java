@@ -64,12 +64,19 @@ public class MaintenanceController {
     }
 
     public void criarManutencao(Aircraft aircraft, String maintenanceType, String description) {
+        criarManutencao(aircraft, maintenanceType, description, null);
+    }
+
+    public void criarManutencao(Aircraft aircraft, String maintenanceType, String description, LocalDate estimatedEndDate) {
         try {
             if (BoDataAccess.useApi()) {
-                boApi.createMaintenance(aircraft, maintenanceType, description);
+                boApi.createMaintenance(aircraft, maintenanceType, description, estimatedEndDate);
                 return;
             }
-            maintenanceService.criarManutencao(aircraft, maintenanceType, description);
+            Maintenance created = maintenanceService.criarManutencao(aircraft, maintenanceType, description);
+            if (estimatedEndDate != null && created != null && created.getId() != null) {
+                maintenanceService.atualizarManutencao(created.getId(), null, estimatedEndDate, null, null, null);
+            }
         } catch (IllegalArgumentException | ApiException e) {
             throw new RuntimeException("Erro ao criar manutencao: " + e.getMessage());
         }

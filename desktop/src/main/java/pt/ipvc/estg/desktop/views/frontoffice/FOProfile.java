@@ -370,13 +370,92 @@ public class FOProfile extends JPanel {
     }
 
     private JPanel createSecurityTab() {
-        JPanel card = createSimpleCard("Seguranca da Conta");
-        card.add(createActionRow("Alterar Password", "Ultima alteracao: ha 3 meses"));
+        JPanel card = createSimpleCard("Alterar Password");
+
+        if (!foStudentService.useApi()) {
+            JLabel offline = new JLabel("Disponivel apenas com ligacao a API.");
+            offline.setForeground(MUTED);
+            offline.setFont(new Font("Inter", Font.PLAIN, 12));
+            card.add(offline);
+            return card;
+        }
+
+        JPasswordField currentField = new JPasswordField();
+        JPasswordField newField = new JPasswordField();
+        stylePasswordField(currentField);
+        stylePasswordField(newField);
+
+        addPasswordField(card, "Password actual", currentField);
+        addPasswordField(card, "Nova password (min. 6 caracteres)", newField);
+
+        JLabel statusLabel = new JLabel(" ");
+        statusLabel.setForeground(MUTED);
+        statusLabel.setFont(new Font("Inter", Font.PLAIN, 11));
+        card.add(Box.createVerticalStrut(4));
+        card.add(statusLabel);
         card.add(Box.createVerticalStrut(8));
-        card.add(createActionRow("Autenticacao em Dois Fatores", "Nao configurada"));
-        card.add(Box.createVerticalStrut(8));
-        card.add(createActionRow("Sessoes Ativas", "1 sessao ativa (este dispositivo)"));
+
+        JButton submit = new JButton("Alterar");
+        stylePrimaryButton(submit);
+        submit.setAlignmentX(Component.LEFT_ALIGNMENT);
+        submit.addActionListener(e -> submitPasswordChange(currentField, newField, statusLabel));
+        card.add(submit);
+
         return card;
+    }
+
+    private void addPasswordField(JPanel parent, String label, JPasswordField field) {
+        JPanel block = new JPanel();
+        block.setOpaque(false);
+        block.setLayout(new BoxLayout(block, BoxLayout.Y_AXIS));
+        block.setAlignmentX(Component.LEFT_ALIGNMENT);
+        block.setMaximumSize(new Dimension(Integer.MAX_VALUE, 70));
+
+        JLabel lbl = new JLabel(label);
+        lbl.setForeground(MUTED);
+        lbl.setFont(new Font("Inter", Font.PLAIN, 11));
+        block.add(lbl);
+        block.add(Box.createVerticalStrut(4));
+        block.add(field);
+        parent.add(block);
+        parent.add(Box.createVerticalStrut(10));
+    }
+
+    private void stylePasswordField(JPasswordField field) {
+        field.setFont(new Font("Inter", Font.PLAIN, 12));
+        field.setBackground(WHITE);
+        field.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER, 1),
+                new EmptyBorder(7, 8, 7, 8)
+        ));
+        field.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+    }
+
+    private void submitPasswordChange(JPasswordField currentField, JPasswordField newField, JLabel statusLabel) {
+        String current = new String(currentField.getPassword());
+        String newPassword = new String(newField.getPassword());
+
+        if (current.isBlank() || newPassword.isBlank()) {
+            statusLabel.setForeground(new Color(220, 38, 38));
+            statusLabel.setText("Preencha a password actual e a nova password.");
+            return;
+        }
+        if (newPassword.length() < 6) {
+            statusLabel.setForeground(new Color(220, 38, 38));
+            statusLabel.setText("A nova password deve ter pelo menos 6 caracteres.");
+            return;
+        }
+
+        try {
+            foStudentService.changePassword(current, newPassword);
+            currentField.setText("");
+            newField.setText("");
+            statusLabel.setForeground(GREEN);
+            statusLabel.setText("Password alterada com sucesso.");
+        } catch (RuntimeException ex) {
+            statusLabel.setForeground(new Color(220, 38, 38));
+            statusLabel.setText(ex.getMessage());
+        }
     }
 
     private JPanel createNotificationsTab() {
@@ -408,35 +487,6 @@ public class FOProfile extends JPanel {
         card.add(titleLabel);
         card.add(Box.createVerticalStrut(10));
         return card;
-    }
-
-    private JPanel createActionRow(String title, String subtitle) {
-        JPanel row = new JPanel(new BorderLayout(8, 0));
-        row.setOpaque(true);
-        row.setBackground(new Color(248, 250, 252));
-        row.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDER, 1),
-                new EmptyBorder(10, 10, 10, 10)
-        ));
-
-        JPanel text = new JPanel();
-        text.setOpaque(false);
-        text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
-        JLabel titleLabel = new JLabel(title);
-        titleLabel.setForeground(TITLE);
-        titleLabel.setFont(new Font("Inter", Font.BOLD, 12));
-        JLabel sub = new JLabel(subtitle);
-        sub.setForeground(SOFT);
-        sub.setFont(new Font("Inter", Font.PLAIN, 10));
-        text.add(titleLabel);
-        text.add(sub);
-        row.add(text, BorderLayout.CENTER);
-
-        JLabel chevron = new JLabel(">", SwingConstants.CENTER);
-        chevron.setForeground(new Color(203, 213, 225));
-        chevron.setFont(new Font("Inter", Font.BOLD, 12));
-        row.add(chevron, BorderLayout.EAST);
-        return row;
     }
 
     private JPanel createToggleRow(String title, String subtitle, boolean active) {

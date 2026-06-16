@@ -124,6 +124,11 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <version>${spring-boot.version}</version>
+                <configuration>
+                    <!-- Main artifact stays a thin jar (usable as Maven dependency by desktop tests).
+                         The runnable fat jar is published with classifier "exec". -->
+                    <classifier>exec</classifier>
+                </configuration>
                 <executions>
                     <execution>
                         <goals>

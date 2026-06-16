@@ -4,6 +4,7 @@ import pt.ipvc.estg.desktop.api.ApiException;
 import pt.ipvc.estg.desktop.api.dto.UserAccountResponse;
 import pt.ipvc.estg.desktop.controllers.StudentController;
 import pt.ipvc.estg.desktop.controllers.UserController;
+import pt.ipvc.estg.desktop.security.RoleMenuPolicy;
 import pt.ipvc.estg.entities.Student;
 
 import javax.swing.*;
@@ -72,6 +73,11 @@ public class BOUsers extends JPanel {
         refreshBtn.addActionListener(e -> loadData());
         actions.add(refreshBtn);
 
+        JButton toggleBtn = new JButton("Ativar / Desativar");
+        styleSecondaryButton(toggleBtn);
+        toggleBtn.addActionListener(e -> toggleSelectedUserActive());
+        actions.add(toggleBtn);
+
         JButton newBtn = new JButton("Novo Utilizador");
         stylePrimaryButton(newBtn);
         newBtn.addActionListener(e -> criarUtilizadorDialog());
@@ -87,7 +93,7 @@ public class BOUsers extends JPanel {
         card.setBackground(WHITE);
         card.setBorder(BorderFactory.createLineBorder(BORDER, 1));
 
-        String[] columns = {"Utilizador", "Tipo", "Perfil / Aluno", "Estado"};
+        String[] columns = {"Utilizador", "Tipo", "Perfil / Aluno", "Permissões", "Estado"};
         tableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -109,7 +115,9 @@ public class BOUsers extends JPanel {
         table.getTableHeader().setFont(new Font("Inter", Font.BOLD, 11));
 
         table.getColumnModel().getColumn(1).setCellRenderer(new RoleBadgeRenderer());
-        table.getColumnModel().getColumn(3).setCellRenderer(new StatusBadgeRenderer());
+        table.getColumnModel().getColumn(3).setCellRenderer(new PermissionsRenderer());
+        table.getColumnModel().getColumn(4).setCellRenderer(new StatusBadgeRenderer());
+        table.getColumnModel().getColumn(3).setPreferredWidth(280);
 
         table.addMouseListener(new MouseAdapter() {
             @Override
@@ -153,13 +161,20 @@ public class BOUsers extends JPanel {
     private void displayUsers() {
         tableModel.setRowCount(0);
         for (UserAccountResponse u : users) {
-            String detail = isAdmin(u.role())
+            String profile = isAdmin(u.role())
                     ? (u.staffProfile() != null ? u.staffProfile() : "Administrador")
+                    : null;
+            String detail = profile != null
+                    ? profile
                     : (u.studentName() != null ? u.studentName() : "—");
+            String permissions = profile != null
+                    ? RoleMenuPolicy.permissionsSummary(profile)
+                    : "Área do aluno";
             tableModel.addRow(new Object[]{
                     u.username(),
                     u.role() != null ? u.role().toUpperCase() : "—",
                     detail,
+                    permissions,
                     u.active() ? "active" : "inactive"
             });
         }
@@ -180,15 +195,24 @@ public class BOUsers extends JPanel {
 
         JLabel staffLabel = new JLabel("Perfil de staff");
         JLabel studentLabel = new JLabel("Aluno associado");
+        JLabel permissionsHint = new JLabel(" ");
+        permissionsHint.setFont(new Font("Inter", Font.PLAIN, 10));
+        permissionsHint.setForeground(MUTED);
 
         Runnable refreshVisibility = () -> {
             boolean admin = "ADMIN".equals(roleCombo.getSelectedItem());
             staffLabel.setVisible(admin);
             staffCombo.setVisible(admin);
+            permissionsHint.setVisible(admin);
             studentLabel.setVisible(!admin);
             studentCombo.setVisible(!admin);
+            if (admin) {
+                String profile = (String) staffCombo.getSelectedItem();
+                permissionsHint.setText("Acesso: " + RoleMenuPolicy.permissionsSummary(profile));
+            }
         };
         roleCombo.addActionListener(e -> refreshVisibility.run());
+        staffCombo.addActionListener(e -> refreshVisibility.run());
 
         JPanel form = new JPanel(new GridLayout(0, 1, 6, 6));
         form.add(new JLabel("Nome de utilizador"));
@@ -199,6 +223,7 @@ public class BOUsers extends JPanel {
         form.add(roleCombo);
         form.add(staffLabel);
         form.add(staffCombo);
+        form.add(permissionsHint);
         form.add(studentLabel);
         form.add(studentCombo);
         refreshVisibility.run();
@@ -245,6 +270,32 @@ public class BOUsers extends JPanel {
         }
     }
 
+    private void toggleSelectedUserActive() {
+        int row = table.getSelectedRow();
+        if (row < 0 || row >= users.size()) {
+            JOptionPane.showMessageDialog(this, "Selecione um utilizador na tabela.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        UserAccountResponse user = users.get(row);
+        boolean newActive = !user.active();
+        String action = newActive ? "ativar" : "desativar";
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "Deseja " + action + " o utilizador \"" + user.username() + "\"?\n"
+                        + (newActive ? "" : "Uma conta desativada deixa de poder iniciar sessão."),
+                "Confirmar", JOptionPane.YES_NO_OPTION);
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+        try {
+            userController.definirAtivo(user.id(), newActive);
+            loadData();
+            JOptionPane.showMessageDialog(this, "Utilizador " + (newActive ? "ativado" : "desativado") + " com sucesso.");
+        } catch (ApiException ex) {
+            JOptionPane.showMessageDialog(this, "Erro ao atualizar utilizador: " + ex.getMessage(),
+                    "Erro", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
     private void gerirUtilizadorDialog(UserAccountResponse user) {
         boolean admin = isAdmin(user.role());
 
@@ -253,6 +304,12 @@ public class BOUsers extends JPanel {
         if (user.staffProfile() != null) {
             staffCombo.setSelectedItem(user.staffProfile());
         }
+        JLabel permissionsHint = new JLabel("Acesso: " + RoleMenuPolicy.permissionsSummary(
+                user.staffProfile() != null ? user.staffProfile() : "Administrador"));
+        permissionsHint.setFont(new Font("Inter", Font.PLAIN, 10));
+        permissionsHint.setForeground(MUTED);
+        staffCombo.addActionListener(e -> permissionsHint.setText("Acesso: "
+                + RoleMenuPolicy.permissionsSummary((String) staffCombo.getSelectedItem())));
 
         JPanel form = new JPanel(new GridLayout(0, 1, 6, 6));
         form.add(new JLabel("Utilizador: " + user.username()));
@@ -261,6 +318,7 @@ public class BOUsers extends JPanel {
         if (admin) {
             form.add(new JLabel("Perfil de staff"));
             form.add(staffCombo);
+            form.add(permissionsHint);
         }
 
         int result = JOptionPane.showConfirmDialog(this, form, "Gerir Utilizador",
@@ -327,6 +385,21 @@ public class BOUsers extends JPanel {
         @Override
         public String toString() {
             return student.getName() + (student.getEmail() != null ? " (" + student.getEmail() + ")" : "");
+        }
+    }
+
+    private static class PermissionsRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+                                                       boolean hasFocus, int row, int column) {
+            Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            if (c instanceof JLabel label) {
+                label.setFont(new Font("Inter", Font.PLAIN, 11));
+                label.setForeground(isSelected ? table.getSelectionForeground() : MUTED);
+                String text = value != null ? String.valueOf(value) : "";
+                label.setToolTipText(text.isBlank() ? null : text);
+            }
+            return c;
         }
     }
 
